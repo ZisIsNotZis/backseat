@@ -16,7 +16,6 @@ import time
 from .clock import Stamp, fmt_wall
 from .model import ModelClient, ModelError, image_message
 from .trajectory import Trajectory
-
 # 冻结 system（含固定记忆引擎说明段——缓存安全：逐字不变）
 SYSTEM_PROMPT = """你是见证层：把屏幕帧压缩为纯事实记录。只输出一个 JSON 对象，无其他文字。
 
@@ -188,6 +187,8 @@ class Witness:
                 self.process(r)  # 丢弃（链路 B 终点）也推进游标
             except ModelError as e:
                 self.stats["errors"] = self.stats.get("errors", 0) + 1
+                if "429" in str(e):
+                    time.sleep(60)  # 限流退避；游标不推进，下轮重试
                 self.log(f"[witness] 模型故障，游标不推进（下轮重试）：{e}")
                 break  # 模型不可用时停止本批，避免连续打失败调用
             self.store.set_state("witness_cursor", r["id"])
