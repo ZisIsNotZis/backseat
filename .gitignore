@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 运行时数据与本地库（WALKTHROUGH：数据目录在 ~/backseat-data，防御性忽略本地副本）
+*.db
+*.db-wal
+*.db-shm
+backseat-data/
+
+# 本地配置（config.example.toml 是提交的模板）
+config.toml
+
+# 瞬态工作区
+.scratch/
+.tmp/
+.pi/

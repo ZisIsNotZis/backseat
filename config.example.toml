@@ -1,0 +1,20 @@
+# Backseat 配置示例 —— 所有项皆弹性预算的输入（DESIGN §11），非魔法常量
+
+# —— 弹性预算 ——
+storage_bytes = 21474836480        # 20GB；5G~200G 皆可，引擎推导留存天数
+# daily_requests = 2000            # 不设 = 不限；设置则推导 L1 cadence
+effort = 0.5                       # 0.0~1.0：anchor频率/压缩粒度/侦探层的导出源
+
+# —— 引擎（默认阶梯，可显式覆盖）——
+# anchor_every_n = 100
+# anchor_age_min = 30
+# chunk_k = 20
+# epoch_m = 10
+# gap_close_min = 30.0
+# min_roast_interval = 10.0
+# phash_hamming = 6
+
+# —— 模型 ——
+model = "volcengine/glm-5.3-flash"
+# base_url = "http://127.0.0.1:4000"   # 默认取环境变量 LITELLM_BASE_URL
+# api_key_env = "LITELLM_API_KEY"
