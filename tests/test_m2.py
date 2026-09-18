@@ -117,6 +117,11 @@ def main() -> None:
 
         # --- process_pending 游标 ---
         store.set_state("witness_cursor", 0)
+        for i in range(6):  # 占位帧文件（批帧会读取）
+            (Path(td) / f"c{i}.jpg").write_bytes(b"\xff\xd8fake")
+        store.conn.execute("UPDATE observations SET ref=? WHERE id>? AND ref IS NULL",
+                            (str(Path(td) / "c0.jpg"), 0))
+        store.conn.commit()
         m4 = FakeModel([anchor()] * 10)
         w4 = Witness(store, m4, Trajectory(td), cfg, log=lambda *a: None)
         n = w4.process_pending(batch_size=100)

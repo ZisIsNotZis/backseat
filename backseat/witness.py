@@ -191,6 +191,8 @@ class Witness:
         turn["frames"] = [fmt_wall(r["ts_wall"]) for r in rows]
         messages[-1]["content"][0]["text"] = json.dumps(turn, ensure_ascii=False)
         for i, r in enumerate(rows):
+            if not r["ref"]:
+                continue  # 无帧载荷的观察只贡献时间戳
             b64 = base64.b64encode(open(r["ref"], "rb").read()).decode()
             messages[-1]["content"].append(
                 {"type": "text", "text": f"图{i + 1}（{fmt_wall(r['ts_wall'])}）"})
