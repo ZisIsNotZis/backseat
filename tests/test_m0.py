@@ -101,9 +101,14 @@ def main() -> None:
         p = store.conn.execute("SELECT status FROM expressions WHERE id=?", (e2,)).fetchone()
         assert p["status"] == "sent"
         assert store.storage_used() == 150000
-        assert store.get_state("user_model")["projects"] == ["backseat"]
+        assert store.get_state("user_model") == {"projects": ["backseat"]}
+        store.insert("metrics", ts_wall=s.wall, ts_mono=s.mono,
+                     purpose="witness:anchor", model="glm-5.3-flash",
+                     tokens_in=1843, tokens_out=96, cached_tokens=1502, latency_ms=3800.0)
+        m = store.conn.execute("SELECT * FROM metrics").fetchone()
+        assert m["purpose"] == "witness:anchor" and m["cached_tokens"] == 1502
         store.close()
-    print("store OK: 5 tables, plugin-agnostic, hanoi-provenance traceable")
+    print("store OK: 6 tables, plugin-agnostic, hanoi-provenance traceable")
 
     # --- TOML 加载 ---
     c3 = load_config(Path(__file__).parent.parent / "config.example.toml")

@@ -26,6 +26,17 @@ class Config:
     min_roast_interval: float = 10.0    # 吐槽节流秒
     phash_hamming: int = 6              # 64位pHash差分阈值
 
+    # —— L0 传感器（M1）——
+    data_dir: str = "~/backseat-data"   # 帧与数据库的家
+    display: str = ""                   # 空 = 取 $DISPLAY
+    sample_low: float = 60.0            # 采样分档（DESIGN §10 G2）
+    sample_mid: float = 20.0
+    sample_high: float = 2.0
+    ring_seconds: float = 120.0         # RAM 环时长（不落盘）
+    batch_max: int = 6                  # 每处理窗最多入选帧数（宁多勿漏的上界）
+    process_window: float = 20.0        # 挑选器处理窗（=中档节奏）
+    blank_std: float = 6.0              # 空帧拦截：32x32 灰度 std 阈值
+
     # —— 模型 ——
     model: str = "volcengine/glm-5.3-flash"
     base_url: str = ""                  # 默认取 LITELLM_BASE_URL

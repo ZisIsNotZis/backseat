@@ -5,6 +5,15 @@ storage_bytes = 21474836480        # 20GB；5G~200G 皆可，引擎推导留存�
 # daily_requests = 2000            # 不设 = 不限；设置则推导 L1 cadence
 effort = 0.5                       # 0.0~1.0：anchor频率/压缩粒度/侦探层的导出源
 
+# —— L0 传感器（M1）——
+# data_dir = "~/backseat-data"     # 帧与数据库的家
+# display = ":1"                   # 空 = 取 $DISPLAY
+# sample_low = 60.0                # 采样分档：低/中/高（秒）
+# sample_mid = 20.0
+# sample_high = 2.0
+# ring_seconds = 120.0             # RAM 环时长
+# batch_max = 6                    # 每处理窗最多入选帧数
+
 # —— 引擎（默认阶梯，可显式覆盖）——
 # anchor_every_n = 100
 # anchor_age_min = 30

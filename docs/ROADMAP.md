@@ -5,9 +5,9 @@
 范围：**仅感知层 + 弹幕出口**。帮助层不做。每个 Milestone 结束有确认门（⏸），需要用户确认后才进入下一个。
 
 ### M0 骨架与数据层
-- 事件总线（asyncio，全时间戳，墙钟+单调双轨）+ SQLite schema：`observations / messages / kb / expressions / state` 五张表（messages 单表 level=small/medium/big，汉诺塔合并）（state=kv：USER_MODEL、ANCHOR、计数器、预算水位）
+- 事件总线（asyncio，全时间戳，墙钟+单调双轨）+ SQLite schema：`observations / messages / kb / expressions / metrics / state` 六张表（messages 单表 level=small/medium/big，汉诺塔合并）（state=kv：USER_MODEL、ANCHOR、计数器、预算水位）（metrics=逐调用 tokens/缓存/时延，M0 定稿时纳入）
 - 配置文件（storage_bytes、daily_requests可选、effort、K/M/N、节流、模型路由）——全部为弹性输入，引擎推导运行参数
-- ⏸ **确认门：schema 评审**——五张表（DESIGN §10.G1 三表合一后）的字段定稿，之后改表要迁移
+- ⏸ **确认门：schema 评审**——六张表（DESIGN §10.G1 三表合一 + M0 定稿纳入 metrics）的字段定稿，之后改表要迁移【已确认 2026-09-18】
 
 ### M1 传感器（L0）
 - 屏幕采集（x11grab）+ pHash 门控 + 空帧拦截 + 大事件检测（封闭枚举：窗口切换/workspace/全屏/恢复空闲）

@@ -1,4 +1,4 @@
-"""SQLite 存储层：五张表 + 会话流视图 + state kv。WAL，幂等。
+"""SQLite 存储层：六张表 + 会话流视图 + state kv。WAL，幂等。
 
 设计公理（DESIGN §10）：表结构描述引擎本体——观察 -> 理解 -> 表达/执行。
 插件与输入输出手段不是表，是字段值（sensor / channel 列）。
@@ -6,6 +6,7 @@
   observations 原始观察（一切传感器的落点）
   messages 记忆金字塔（level: small/medium/big，汉诺塔合并）
   kb           唤起记忆              expressions 表达与行为（speak/propose/act）
+  metrics      逐调用计量（tokens/缓存命中/时延）
   state        kv：USER_MODEL / ANCHOR / 计数器 / 预算水位
 """
 
@@ -86,6 +87,20 @@ CREATE TABLE IF NOT EXISTS expressions (
   meta      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_expr_ts ON expressions(ts_wall);
+
+-- 逐调用计量（M2 起 LLM 通道使用；全量 trajectory 走 JSONL，此表供统计/反调预算）
+CREATE TABLE IF NOT EXISTS metrics (
+  id        INTEGER PRIMARY KEY,
+  ts_wall   REAL NOT NULL,
+  ts_mono   REAL NOT NULL,
+  purpose   TEXT NOT NULL,             -- witness:anchor|witness:diff|compress:mid|compress:big|persona:…
+  model     TEXT,
+  tokens_in INTEGER NOT NULL DEFAULT 0,
+  tokens_out INTEGER NOT NULL DEFAULT 0,
+  cached_tokens INTEGER NOT NULL DEFAULT 0,
+  latency_ms REAL
+);
+CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics(ts_wall);
 
 CREATE TABLE IF NOT EXISTS state (
   key       TEXT PRIMARY KEY,
