@@ -119,7 +119,7 @@ def main() -> None:
         store.set_state("witness_cursor", 0)
         m4 = FakeModel([anchor()] * 10)
         w4 = Witness(store, m4, Trajectory(td), cfg, log=lambda *a: None)
-        n = w4.process_pending(batch=100)
+        n = w4.process_pending(batch_size=100)
         total_obs = store.conn.execute(
             "SELECT count(*) c FROM observations").fetchone()["c"]
         assert n == total_obs, (n, total_obs)
