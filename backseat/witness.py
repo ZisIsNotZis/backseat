@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import sqlite3
 import time
@@ -67,8 +68,15 @@ class Witness:
         self.stats = {"calls": 0, "parse_fail": 0, "discarded": 0, "anchors": 0}
         self._system = SYSTEM_PROMPT
 
+    def _needs_anchor(self, ts_wall: float) -> bool:
+        a = self.store.get_state("anchor", {})
+        if not a:
+            return True
+        return (a.get("n", 0) >= self.cfg.anchor_every_n
+                or (ts_wall - a.get("ts_wall", 0)) / 60.0 >= self.cfg.anchor_age_min)
+
     # —— context 组装（顺序即缓存契约；时钟最末）——
-    def _context(self, obs_row) -> tuple[list[dict], dict]:
+    def _context(self, obs_row, batch: int = 1) -> tuple[list[dict], dict]:
         st = self.store
         user_model = st.get_state("user_model", {})
         bigs = st.conn.execute(
@@ -99,8 +107,7 @@ class Witness:
         anchor = st.get_state("anchor", {})
         n_since = anchor.get("n", 0)
         age_min = (obs_row["ts_wall"] - anchor.get("ts_wall", 0)) / 60.0
-        mode = "anchor" if (not anchor or n_since >= self.cfg.anchor_every_n
-                            or age_min >= self.cfg.anchor_age_min) else "diff"
+        mode = "anchor" if self._needs_anchor(obs_row["ts_wall"]) else "diff"
         turn_text = json.dumps({
             "now": fmt_wall(obs_row["ts_wall"]),
             "mode": mode,
@@ -175,22 +182,78 @@ class Witness:
                  f"{(mini.get('describe') or mini.get('diff'))[:60]}")
         return mid
 
-    # —— 游标驱动：处理所有未见证的观察 ——
-    def process_pending(self, batch: int = 4) -> int:
+    # —— 批帧：一次调用 ≤6 张图，输出同 schema 的单个 mini（DESIGN §7.5 同批压缩）——
+    def process_batch(self, rows) -> int | None:
+        if not rows:
+            return None
+        messages, minfo = self._context(rows[0], batch=len(rows))
+        turn = json.loads(messages[-1]["content"][0]["text"])
+        turn["frames"] = [fmt_wall(r["ts_wall"]) for r in rows]
+        messages[-1]["content"][0]["text"] = json.dumps(turn, ensure_ascii=False)
+        for i, r in enumerate(rows):
+            b64 = base64.b64encode(open(r["ref"], "rb").read()).decode()
+            messages[-1]["content"].append(
+                {"type": "text", "text": f"图{i + 1}（{fmt_wall(r['ts_wall'])}）"})
+            messages[-1]["content"].append(
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
+        text, usage = self.model.chat(messages)
+        self.stats["calls"] += 1
+        self.trajectory.record(f"witness:batch{len(rows)}", self.model.model,
+                               messages, text, usage)
+        self.store.insert("metrics", ts_wall=Stamp.now().wall, ts_mono=Stamp.now().mono,
+                          purpose=f"witness:batch{len(rows)}", model=self.model.model,
+                          tokens_in=usage.get("in", 0), tokens_out=usage.get("out", 0),
+                          cached_tokens=usage.get("cached", 0),
+                          latency_ms=usage.get("latency_ms", 0))
+        mini = parse_mini(text)
+        if mini is None:
+            self.stats["parse_fail"] += 1
+            self.stats["discarded"] += len(rows)
+            self.log(f"[witness] 批解析失败丢弃 {len(rows)} 帧：{text[:100]!r}")
+            return None
+        ids = [r["id"] for r in rows]
+        payload = {}
+        if mini.get("importance") is not None:
+            payload["importance"] = mini["importance"]
+        if mini.get("candidate_project"):
+            payload["candidate_project"] = mini["candidate_project"]
+        mid = self.store.insert(
+            "messages", level="small",
+            ts_start=rows[0]["ts_wall"], ts_end=rows[-1]["ts_wall"],
+            content=mini.get("describe") or mini.get("diff"),
+            intent=mini.get("intent") or None,
+            type=mini["type"], source="vlm", model=self.model.model,
+            payload=payload or None, obs_ids=json.dumps(ids))
+        anchor = self.store.get_state("anchor", {})
+        self.store.set_state("anchor", {"ts_wall": anchor.get("ts_wall"),
+                                        "n": anchor.get("n", 0) + len(rows)})
+        return mid
+
+    # —— 游标驱动：锚须单帧，diff 可拼批（≤batch_size 帧/调用）——
+    def process_pending(self, batch_size: int = 6) -> int:
         cursor = self.store.get_state("witness_cursor", 0)
         rows = self.store.conn.execute(
             "SELECT * FROM observations WHERE id>? AND kind='screen.notable' "
-            "ORDER BY id LIMIT ?", (cursor, batch)).fetchall()
+            "ORDER BY id LIMIT 24", (cursor,)).fetchall()
         n = 0
-        for r in rows:
+        i = 0
+        while i < len(rows):
+            r = rows[i]
             try:
-                self.process(r)  # 丢弃（链路 B 终点）也推进游标
+                if self._needs_anchor(r["ts_wall"]):
+                    self.process(r)
+                    done = 1
+                else:
+                    group = rows[i:i + batch_size]
+                    self.process_batch(group)
+                    done = len(group)
             except ModelError as e:
                 self.stats["errors"] = self.stats.get("errors", 0) + 1
                 if "429" in str(e):
-                    time.sleep(60)  # 限流退避；游标不推进，下轮重试
+                    time.sleep(60)  # 限流/配额退避；游标不推进，下轮重试
                 self.log(f"[witness] 模型故障，游标不推进（下轮重试）：{e}")
-                break  # 模型不可用时停止本批，避免连续打失败调用
-            self.store.set_state("witness_cursor", r["id"])
-            n += 1
+                break
+            i += done
+            n += done
+            self.store.set_state("witness_cursor", r["id"] if done == 1 else rows[i - 1]["id"])
         return n

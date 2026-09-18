@@ -17,6 +17,7 @@ from pathlib import Path
 
 from .bus import EventBus
 from .clock import Stamp, fmt_wall
+from .compressor import Compressor
 from .config import load_config
 from .model import ModelClient
 from .sensors.screen import Frame, ScreenSensor
@@ -51,11 +52,14 @@ def build(cfg, store: Store, bus: EventBus) -> ScreenSensor:
 
 
 def build_witness(cfg, store: Store) -> Witness | None:
-    """L1 见证层：模型凭据齐全才启用（LITELLM_BASE_URL + api_key_env）。"""
+    """L1 见证层 + L2 压缩层：模型凭据齐全才启用（LITELLM_BASE_URL + api_key_env）。"""
     model = ModelClient.from_config(cfg)
     if model is None:
         return None
-    return Witness(store, model, Trajectory(cfg.data_dir), cfg)
+    comp = Compressor(store, model, Trajectory(cfg.data_dir), cfg)
+    wit = Witness(store, model, Trajectory(cfg.data_dir), cfg)
+    wit.compressor = comp  # 引擎循环节后调用 comp.maybe_merge('small'|'medium')
+    return wit
 
 
 async def run(cfg, ticks: int | None) -> None:
@@ -78,7 +82,9 @@ async def run(cfg, ticks: int | None) -> None:
             t0 = time.monotonic()
             sensor.tick(Stamp.now())
             if witness is not None:
-                witness.process_pending()
+                if witness.process_pending():
+                    witness.compressor.maybe_merge("small")  # K条 small → mid
+                    witness.compressor.maybe_merge("medium")  # M条 mid → big
             n += 1
             if n % 60 == 0:
                 s = sensor.stats
