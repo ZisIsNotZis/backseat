@@ -14,7 +14,7 @@ import sqlite3
 import time
 
 from .clock import Stamp, fmt_wall
-from .model import ModelClient, image_message
+from .model import ModelClient, ModelError, image_message
 from .trajectory import Trajectory
 
 # 冻结 system（含固定记忆引擎说明段——缓存安全：逐字不变）
@@ -126,6 +126,7 @@ class Witness:
 
     # —— 主入口：一条观察 → 一条 small 消息 ——
     def process(self, obs_row) -> int | None:
+        """返回 small 消息 id；丢弃（解析失败）返回 None；模型故障抛 ModelError。"""
         messages, minfo = self._context(obs_row)
         mini = None
         for attempt in (1, 2):  # 链路 B：解析失败重试 1 次后丢弃
@@ -183,7 +184,12 @@ class Witness:
             "ORDER BY id LIMIT ?", (cursor, batch)).fetchall()
         n = 0
         for r in rows:
-            self.process(r)  # 丢弃（链路 B 终点）也推进游标
+            try:
+                self.process(r)  # 丢弃（链路 B 终点）也推进游标
+            except ModelError as e:
+                self.stats["errors"] = self.stats.get("errors", 0) + 1
+                self.log(f"[witness] 模型故障，游标不推进（下轮重试）：{e}")
+                break  # 模型不可用时停止本批，避免连续打失败调用
             self.store.set_state("witness_cursor", r["id"])
             n += 1
         return n

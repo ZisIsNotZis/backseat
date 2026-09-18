@@ -19,11 +19,12 @@ class ModelError(Exception):
 
 class ModelClient:
     def __init__(self, base_url: str, api_key: str, model: str,
-                 timeout: float = 120.0) -> None:
+                 timeout: float = 300.0, max_tokens: int | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.timeout = timeout
+        self.max_tokens = max_tokens  # None=不限（推理模型的隐藏推理也计入输出）
 
     @classmethod
     def from_config(cls, cfg) -> "ModelClient | None":
@@ -35,9 +36,12 @@ class ModelClient:
 
     def chat(self, messages: list[dict]) -> tuple[str, dict]:
         """返回 (文本, usage)。usage: {in, out, cached}。失败抛 ModelError。"""
-        body = json.dumps({"model": self.model, "messages": messages}).encode()
+        body: dict = {"model": self.model, "messages": messages}
+        if self.max_tokens:
+            body["max_tokens"] = self.max_tokens
+        payload = json.dumps(body).encode()
         req = urllib.request.Request(
-            f"{self.base_url}/chat/completions", data=body,
+            f"{self.base_url}/chat/completions", data=payload,
             headers={"Content-Type": "application/json",
                      "Authorization": f"Bearer {self.api_key}"})
         t0 = time.monotonic()
