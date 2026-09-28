@@ -20,8 +20,10 @@ class KB:
         self.store = store
 
     # —— 注入（见证层 context 用）——
-    def hits_for(self, recent_text: str, now: float | None = None) -> list[str]:
-        """返回应注入的 [KB命中行] 文本列表。"""
+    def hits_for(self, recent_text: str, now: float | None = None,
+                 mark: bool = True) -> list[str]:
+        """返回应注入的 [KB命中行] 文本列表。mark=False 时只探测不落账
+        （触发判定 peek；真正注入 context 时才记 last_shown）。"""
         now = now or time.time()
         hits: list[str] = []
         for row in self.store.conn.execute(
@@ -46,7 +48,9 @@ class KB:
             if (row["last_shown"] or 0) + KB_HIT_DEDUPE_S > now:
                 continue  # 防重：刚浮现过
             hits.append(f"({row['id']}) {row['desc']}")
-            self.store.conn.execute("UPDATE kb SET last_shown=? WHERE id=?", (now, row["id"]))
+            if mark:
+                self.store.conn.execute(
+                    "UPDATE kb SET last_shown=? WHERE id=?", (now, row["id"]))
         if hits:
             self.store.conn.commit()
         return hits

@@ -20,6 +20,7 @@ from .clock import Stamp, fmt_wall
 from .compressor import Compressor
 from .config import load_config
 from .model import ModelClient
+from .persona import Persona
 from .sensors.screen import Frame, ScreenSensor
 from .store import Store
 from .trajectory import Trajectory
@@ -59,6 +60,7 @@ def build_witness(cfg, store: Store) -> Witness | None:
     comp = Compressor(store, model, Trajectory(cfg.data_dir), cfg)
     wit = Witness(store, model, Trajectory(cfg.data_dir), cfg)
     wit.compressor = comp  # 引擎循环节后调用 comp.maybe_merge('small'|'medium')
+    wit.persona = Persona("danmaku-jun", store, model, Trajectory(cfg.data_dir), cfg)
     return wit
 
 
@@ -85,6 +87,12 @@ async def run(cfg, ticks: int | None) -> None:
                 if witness.process_pending():
                     witness.compressor.maybe_merge("small")  # K条 small → mid
                     witness.compressor.maybe_merge("medium")  # M条 mid → big
+                pc = store.get_state("persona_cursor", 0)
+                for r in store.conn.execute(
+                        "SELECT * FROM messages WHERE level='small' AND id>? "
+                        "ORDER BY id LIMIT 5", (pc,)).fetchall():
+                    witness.persona.on_fact(r)
+                    store.set_state("persona_cursor", r["id"])
             n += 1
             if n % 60 == 0:
                 s = sensor.stats
@@ -99,7 +107,10 @@ async def run(cfg, ticks: int | None) -> None:
     finally:
         s = sensor.stats
         w = witness.stats if witness else {}
-        print(json.dumps({"final": {"sensor": s, "witness": w},
+        p = witness.persona.stats if witness else {}
+        if witness:
+            witness.persona.outlet.close()
+        print(json.dumps({"final": {"sensor": s, "witness": w, "persona": p},
                           "storage_bytes": store.storage_used()}),
               flush=True)
         store.close()
