@@ -15,6 +15,7 @@ import sqlite3
 import time
 
 from .clock import Stamp, fmt_wall
+from .kb import KB
 from .model import ModelClient, ModelError, image_message
 from .trajectory import Trajectory
 # 冻结 system（含固定记忆引擎说明段——缓存安全：逐字不变）
@@ -65,6 +66,7 @@ class Witness:
         self.trajectory = trajectory
         self.cfg = cfg
         self.log = log
+        self.kb = KB(store)
         self.stats = {"calls": 0, "parse_fail": 0, "discarded": 0, "anchors": 0}
         self._system = SYSTEM_PROMPT
 
@@ -117,18 +119,11 @@ class Witness:
         return messages, {"mode": mode, "n_since": n_since, "age_min": age_min}
 
     def _kb_hits(self) -> list[str]:
-        """简易唤起：kb.keys 命中近期 small 内容（完整机制 M4：last_shown 防重等）。"""
+        """唤起：KB.keys 命中近期 small 内容；!always 周期重放；!at 到点（KB 类负责）。"""
         recent = " ".join(r["content"] or "" for r in self.store.session_stream(limit=5))
         if not recent:
-            return []
-        hits = []
-        for row in self.store.conn.execute(
-                "SELECT id,keys,desc FROM kb WHERE open=1"):
-            for k in json.loads(row["keys"]):
-                if k and k in recent:
-                    hits.append(f"({row['id']}) {row['desc']}")
-                    break
-        return hits
+            return self.kb.hits_for("")
+        return self.kb.hits_for(recent)
 
     # —— 主入口：一条观察 → 一条 small 消息 ——
     def process(self, obs_row) -> int | None:

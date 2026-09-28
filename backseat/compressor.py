@@ -51,6 +51,8 @@ class Compressor:
         self.trajectory = trajectory
         self.cfg = cfg
         self.log = log
+        from .kb import KB
+        self.kb = KB(store)
         self.stats = {"merges": 0, "parse_fail": 0, "skipped": 0}
 
     def _unfolded_count(self, level: str) -> int:
@@ -113,6 +115,8 @@ class Compressor:
             for kk, vv in delta.items():  # 浅合并；冲突时 mid 的较新值胜
                 um[kk] = vv
             self.store.set_state("user_model", um)
+        if hasattr(self, "kb"):
+            self.kb.clear_last_shown()  # 合并边界：清零防漏（DESIGN §3 唤起机制）
         self.stats["merges"] += 1
         self.log(f"[compress] {len(rows)}×{from_level} → {to_level}#{parent} "
                  f"keys={merged['keys']}")

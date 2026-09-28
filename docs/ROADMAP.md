@@ -21,7 +21,7 @@
 - 严格 JSON schema（语义层：type/diff/intent/candidate_project?/importance?/roast?，无介质词汇）+ **固化 docs/SCHEMA.md**（Event/Mini/Expression schema、插件契约、mood闭集、status枚举 sent→shown→…）
 - 逐调用 token/成本/缓存命中/时延计量 + **Trajectory 全量 JSONL 落盘**（开发期调试生命线）
 - **门内必报实测数据**（前缀缓存命中率、每帧均摊成本、存储水位增量），供用户校准预算算法
-- ⏸ **确认门：用户抽查一天的 mini 质量** + 成本实测报告（无硬顶，纯校准用）
+- ⏸ **确认门：用户抽查一天的 mini 质量** + 成本实测报告（无硬顶，纯校准用）【已确认 2026-09-28：mini/mid 质量在线；模型换 github_copilot/gpt-6-luna（effort=low），拼批后 ~265 out tok/帧、p50 8s】
 
 ### M3 记忆金字塔（L2）
 - minis→mid（K条或大变化）、mids→big（M条）
