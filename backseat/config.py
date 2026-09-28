@@ -38,7 +38,8 @@ class Config:
     blank_std: float = 6.0              # 空帧拦截：32x32 灰度 std 阈值
 
     # —— 模型 ——
-    model: str = "volcengine/glm-5.3-flash"
+    model: str = "github_copilot/gpt-6-luna"
+    reasoning_effort: str = "low"       # 思考等级（可调：minimal/low/medium/high）
     base_url: str = ""                  # 默认取 LITELLM_BASE_URL
     api_key_env: str = "LITELLM_API_KEY"
 
