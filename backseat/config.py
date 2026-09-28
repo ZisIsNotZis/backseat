@@ -36,6 +36,7 @@ class Config:
     batch_max: int = 6                  # 每处理窗最多入选帧数（宁多勿漏的上界）
     process_window: float = 20.0        # 挑选器处理窗（=中档节奏）
     blank_std: float = 6.0              # 空帧拦截：32x32 灰度 std 阈值
+    digest_min: float = 20.0            # 人格层周期 digest（分钟）：频率校准旋钮
 
     # —— 模型 ——
     model: str = "github_copilot/gpt-6-luna"

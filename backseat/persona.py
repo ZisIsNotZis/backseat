@@ -212,6 +212,61 @@ class Persona:
                 return True
         return False
 
+    # —— 周期 digest（WALKTHROUGH T8：无高重要度事件时也定期开口，可校准频率）——
+    def on_digest(self) -> int | None:
+        recent = self.store.session_stream(limit=10)
+        if not recent:
+            return None
+        body = "\n".join(f"{fmt_wall(r['ts_start'])} {r['content']}" for r in recent[:5])
+        messages = self._digest_context(body)
+        for _ in (1, 2):
+            text, usage = self.model.chat(messages)
+            self.stats["drafts"] += 1
+            self.trajectory.record(f"persona:{self.pid}:digest", self.model.model,
+                                   messages, text, usage)
+            draft = parse_draft(text)
+            if draft is not None:
+                break
+            self.stats["parse_fail"] += 1
+        if draft is None or draft.get("silence"):
+            self.stats["silence"] += 1
+            return None
+        now = time.time()
+        last = self.store.conn.execute(
+            "SELECT ts_wall FROM expressions WHERE kind='speak' ORDER BY ts_wall DESC "
+            "LIMIT 1").fetchone()
+        if last and now - last["ts_wall"] < self.cfg.min_roast_interval:
+            self.stats["throttled"] += 1
+            return None
+        if self._dup(draft["content"]):
+            self.stats["dup"] += 1
+            return None
+        xid = self.store.insert(
+            "expressions", ts_wall=now, kind="speak", content=draft["content"],
+            channel="danmaku", mood=draft["mood"], salience=draft["salience"],
+            dedup_key=draft["content"][:12], source_refs=[], status="sent")
+        status = self.outlet.render(draft["content"], draft["mood"], draft["salience"])
+        self.store.conn.execute("UPDATE expressions SET status=? WHERE id=?", (status, xid))
+        self.store.conn.commit()
+        self.stats["spoken"] += 1
+        self.log(f"[persona:{self.pid}] digest 弹幕#{xid} {status} 「{draft['content']}」")
+        return xid
+
+    def _digest_context(self, body: str) -> list[dict]:
+        st = self.store
+        ctx = self._system + "\n"
+        ctx += f"[USER_MODEL]\n{json.dumps(st.get_state('user_model', {}), ensure_ascii=False)}\n"
+        ctx += f"[近期事实]\n{body}\n"
+        tail = st.conn.execute(
+            "SELECT content FROM expressions WHERE kind='speak' "
+            "ORDER BY ts_wall DESC LIMIT 5").fetchall()
+        if tail:
+            ctx += "[expressions尾部]\n" + "\n".join(r["content"] for r in tail) + "\n"
+        turn = json.dumps({"trigger": "digest", "now": fmt_wall(time.time())},
+                          ensure_ascii=False)
+        return [{"role": "system", "content": ctx},
+                {"role": "user", "content": turn}]
+
     def _context(self, mini_row, reason: str) -> list[dict]:
         st = self.store
         ctx = self._system + "\n"

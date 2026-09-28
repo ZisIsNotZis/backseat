@@ -76,9 +76,10 @@ async def run(cfg, ticks: int | None) -> None:
     else:
         print(f"L1 见证层启用：{cfg.model}", flush=True)
 
-    print(f"backseat M0+M1: display={sensor.display or '$DISPLAY'} "
+    print(f"backseat M0-M5: display={sensor.display or '$DISPLAY'} "
           f"data={data} tier={sensor.tier}（Ctrl-C 退出）", flush=True)
     n = 0
+    now_wall = time.time()
     try:
         while ticks is None or n < ticks:
             t0 = time.monotonic()
@@ -93,6 +94,10 @@ async def run(cfg, ticks: int | None) -> None:
                         "ORDER BY id LIMIT 5", (pc,)).fetchall():
                     witness.persona.on_fact(r)
                     store.set_state("persona_cursor", r["id"])
+                # 周期 digest：无高重要度事件也定期开口（频率校准旋钮）
+                if now_wall - store.get_state("last_digest", 0.0) >= cfg.digest_min * 60:
+                    if witness.persona.on_digest() is not None or True:
+                        store.set_state("last_digest", now_wall)
             n += 1
             if n % 60 == 0:
                 s = sensor.stats
@@ -102,6 +107,7 @@ async def run(cfg, ticks: int | None) -> None:
                       f"存储={store.storage_used()>>20}MB", flush=True)
             # 目标 1s tick；抓帧耗时从休眠中扣除
             await asyncio.sleep(max(0.2, 1.0 - (time.monotonic() - t0)))
+            now_wall = time.time()
     except KeyboardInterrupt:
         pass
     finally:

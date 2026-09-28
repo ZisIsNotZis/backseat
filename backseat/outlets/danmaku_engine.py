@@ -255,12 +255,6 @@ def run_daemon():
     sys.exit(app.exec_())
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "script":
-        dur = float(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[3] == "--duration" else None
-        run_timeline(sys.argv[2], dur)
-    else:
-        run_daemon()
 
 
 # --- Backseat Outlet 适配：stdin JSON-lines 守护（一行一条：{"text","color","size"}）---
@@ -273,6 +267,7 @@ def run_stdin_daemon():
     eng.start()
 
     def feed():
+        import os
         for line in sys.stdin:
             line = line.strip()
             if not line:
