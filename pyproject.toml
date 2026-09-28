@@ -1,7 +1,10 @@
 [project]
 name = "backseat"
-version = "2.0.0a0"
+version = "2.0.0a1"
 description = "Local-first long-term AI companion — danmaku is just its mouth"
 requires-python = ">=3.12"
 license = { text = "AGPL-3.0" }
-dependencies = []  # M0: stdlib only
+dependencies = ["PyQt5>=5.15"]  # 弹幕出口；L0/L1 核心 stdlib only
+
+[project.scripts]
+backseat = "backseat.__main__:main"
