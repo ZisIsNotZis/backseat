@@ -13,6 +13,21 @@ backseat-data/
 config.toml
 
 # 瞬态工作区
-.scratch/
 .tmp/
 .pi/
+
+# Common local caches and temporary workspaces
+node_modules/
+worktrees/
+.worktrees/
+.DS_Store
+
+# Local secrets, test caches, and generated logs
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+.env
+.env.*
+!.env.example
+*.log
