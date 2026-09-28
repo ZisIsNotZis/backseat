@@ -19,7 +19,7 @@ from .bus import EventBus
 from .clock import Stamp, fmt_wall
 from .compressor import Compressor
 from .config import load_config
-from .model import ModelClient
+from .model import ModelClient, ModelError
 from .persona import Persona
 from .sensors.screen import Frame, ScreenSensor
 from .store import Store
@@ -84,20 +84,23 @@ async def run(cfg, ticks: int | None) -> None:
         while ticks is None or n < ticks:
             t0 = time.monotonic()
             sensor.tick(Stamp.now())
-            if witness is not None:
-                if witness.process_pending():
-                    witness.compressor.maybe_merge("small")  # K条 small → mid
-                    witness.compressor.maybe_merge("medium")  # M条 mid → big
-                pc = store.get_state("persona_cursor", 0)
-                for r in store.conn.execute(
-                        "SELECT * FROM messages WHERE level='small' AND id>? "
-                        "ORDER BY id LIMIT 5", (pc,)).fetchall():
-                    witness.persona.on_fact(r)
-                    store.set_state("persona_cursor", r["id"])
-                # 周期 digest：无高重要度事件也定期开口（频率校准旋钮）
-                if now_wall - store.get_state("last_digest", 0.0) >= cfg.digest_min * 60:
-                    if witness.persona.on_digest() is not None or True:
+            try:
+                if witness is not None:
+                    if witness.process_pending():
+                        witness.compressor.maybe_merge("small")  # K条 small → mid
+                        witness.compressor.maybe_merge("medium")  # M条 mid → big
+                    pc = store.get_state("persona_cursor", 0)
+                    for r in store.conn.execute(
+                            "SELECT * FROM messages WHERE level='small' AND id>? "
+                            "ORDER BY id LIMIT 5", (pc,)).fetchall():
+                        witness.persona.on_fact(r)
+                        store.set_state("persona_cursor", r["id"])
+                    # 周期 digest：无高重要度事件也定期开口（频率校准旋钮）
+                    if now_wall - store.get_state("last_digest", 0.0) >= cfg.digest_min * 60:
+                        witness.persona.on_digest()
                         store.set_state("last_digest", now_wall)
+            except ModelError as e:
+                print(f"[engine] LLM 暂不可用，下轮重试：{e}", flush=True)
             n += 1
             if n % 60 == 0:
                 s = sensor.stats
