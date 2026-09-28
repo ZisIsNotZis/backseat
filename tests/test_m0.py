@@ -112,7 +112,7 @@ def main() -> None:
 
     # --- TOML 加载 ---
     c3 = load_config(Path(__file__).parent.parent / "config.example.toml")
-    assert c3.storage_bytes == 20 * 1024**3 and c3.model.startswith("volcengine/")
+    assert c3.storage_bytes == 20 * 1024**3 and c3.model.startswith("github_copilot/")
     print("config load OK")
 
     print("\nM0 smoke: ALL PASS")
