@@ -127,7 +127,7 @@ def main() -> None:
         n = w4.process_pending(batch_size=100)
         total_obs = store.conn.execute(
             "SELECT count(*) c FROM observations").fetchone()["c"]
-        assert n == total_obs, (n, total_obs)
+        assert n >= 1, n  # 新语义：n=LLM 调用数（6 帧一批 → 少量调用覆盖全部）
         assert store.get_state("witness_cursor") == total_obs
         n2 = w4.process_pending()
         assert n2 == 0 and store.get_state("witness_cursor") == total_obs
