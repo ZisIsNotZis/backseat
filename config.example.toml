@@ -24,7 +24,7 @@ effort = 0.5                       # 0.0~1.0：anchor频率/压缩粒度/侦探�
 # phash_hamming = 6
 
 # —— 模型 ——
-model = "github_copilot/gpt-6-luna"
+model = "volcengine/glm-5.3-flash"
 # reasoning_effort = "low"          # 思考等级：minimal/low/medium/high
 # base_url = "http://127.0.0.1:4000"   # 默认取环境变量 LITELLM_BASE_URL
 # api_key_env = "LITELLM_API_KEY"

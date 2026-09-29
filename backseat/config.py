@@ -39,7 +39,7 @@ class Config:
     digest_min: float = 20.0            # 人格层周期 digest（分钟）：频率校准旋钮
 
     # —— 模型 ——
-    model: str = "github_copilot/gpt-6-luna"
+    model: str = "volcengine/glm-5.3-flash"  # zai 无余额、copilot 月配额尽（2026-09-28）
     reasoning_effort: str = "low"       # 思考等级（可调：minimal/low/medium/high）
     base_url: str = ""                  # 默认取 LITELLM_BASE_URL
     api_key_env: str = "LITELLM_API_KEY"

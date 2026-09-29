@@ -32,7 +32,7 @@ from PyQt5.QtGui import QBrush, QColor, QFont, QFontMetrics, QPainter, QPainterP
 from PyQt5.QtWidgets import QApplication, QWidget
 
 FONT_FAMILY = "Noto Sans CJK SC"
-SMALL_PX = 15            # v1 storm was 22; 1/3 smaller
+SMALL_PX = 30            # 用户校准：原 15 太小，2 倍
 LIFETIME_MS = 9000       # fixed lifetime for every comment (longer = faster)
 LANE_PAD = 8
 LANE_TOP = 70
@@ -110,7 +110,7 @@ class Engine(QObject):
                       for i in range(n_lanes)]
 
         # large font must fit a 2-lane band
-        large_px = min(2 * self.lane_h - 10, 40)
+        large_px = min(2 * self.lane_h - 10, 80)  # 用户校准：原 40，2 倍
         self.font_l = QFont(FONT_FAMILY)
         self.font_l.setPixelSize(large_px)
         self.font_l.setBold(True)
