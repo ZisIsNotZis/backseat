@@ -226,31 +226,41 @@ class Witness:
                                         "n": anchor.get("n", 0) + len(rows)})
         return mid
 
-    # —— 游标驱动：锚须单帧，diff 可拼批（≤batch_size 帧/调用）——
+    # —— 游标驱动：黑帧廉价跳过，锚须单帧，diff 拼批（≤batch_size 帧/调用）——
     def process_pending(self, batch_size: int = 6) -> int:
         cursor = self.store.get_state("witness_cursor", 0)
         rows = self.store.conn.execute(
             "SELECT * FROM observations WHERE id>? AND kind='screen.notable' "
             "ORDER BY id LIMIT 24", (cursor,)).fetchall()
+        # 廉价预过滤：锁屏/黑帧（jpeg 近全黑 <40KB）不值得 LLM 调用
+        work, last_id = [], cursor
+        for r in rows:
+            if (r["bytes"] or 0) < 40000:
+                self.stats["blank_skipped"] = self.stats.get("blank_skipped", 0) + 1
+                last_id = r["id"]
+                continue
+            work.append(r)
         n = 0
         i = 0
-        while i < len(rows):
-            r = rows[i]
+        while i < len(work):
+            r = work[i]
             try:
                 if self._needs_anchor(r["ts_wall"]):
                     self.process(r)
-                    done = 1
+                    i += 1
                 else:
-                    group = rows[i:i + batch_size]
+                    group = work[i:i + batch_size]
                     self.process_batch(group)
-                    done = len(group)
+                    i += len(group)
+                n += 1
+                last_id = work[i - 1]["id"]
+                self.store.set_state("witness_cursor", last_id)
             except ModelError as e:
                 self.stats["errors"] = self.stats.get("errors", 0) + 1
                 if "429" in str(e):
                     time.sleep(60)  # 限流/配额退避；游标不推进，下轮重试
                 self.log(f"[witness] 模型故障，游标不推进（下轮重试）：{e}")
                 break
-            i += done
-            n += done
-            self.store.set_state("witness_cursor", r["id"] if done == 1 else rows[i - 1]["id"])
+        if last_id > cursor:
+            self.store.set_state("witness_cursor", last_id)
         return n

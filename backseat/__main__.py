@@ -144,7 +144,9 @@ def show_stats(data_dir: Path) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="backseat")
-    ap.add_argument("--config", type=Path, default=None)
+    default_cfg = Path(__file__).resolve().parent.parent / "config.toml"
+    ap.add_argument("--config", type=Path,
+                    default=default_cfg if default_cfg.exists() else None)
     ap.add_argument("--data-dir", type=Path, default=None)
     ap.add_argument("--once", type=int, default=None, metavar="N",
                     help="跑 N 个 tick 后退出（默认一直跑）")

@@ -46,7 +46,7 @@ def mk_obs(store, wall=None, ref=None):
     wall = wall or time.time()
     return store.insert("observations", ts_wall=wall, ts_mono=time.monotonic(),
                         sensor="screen", kind="screen.notable", display="primary",
-                        key=f"k{wall}", ref=ref)
+                        key=f"k{wall}", ref=ref, bytes=150000)
 
 
 def main() -> None:
