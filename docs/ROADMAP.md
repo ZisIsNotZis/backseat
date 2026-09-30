@@ -46,6 +46,11 @@
 
 ## Release 2.1 — 感知层增强（预告）
 
+- **输入流可插拔（Backlog，用户 2026-09-29 提出）**：传感器源不写死屏幕——任意帧流
+  （RTSP、图片目录/序列、另一个 X display、视频文件）都应能接进 L0。现在的
+  `config.display` 只是第一步；抽象成 `Source` 插件（对齐 DESIGN §5 的 Sensor 契约），
+  让测试/演示/CI 不再依赖真实桌面
+
 - ATSPI 常驻传感器（终端/编辑器文本直取）、D-Bus 仅 opportunistic（只记真实到达的桌面通知，不承诺成败覆盖）
 - 深潜策略（L3 触发封闭枚举：首次目击/重大变化/长gap恢复/AI coding爆发）
 - 侦探层（bwrap 只读沙箱、12轮、investigate 召唤）
