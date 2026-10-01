@@ -80,6 +80,7 @@ async def run(cfg, ticks: int | None) -> None:
           f"data={data} tier={sensor.tier}（Ctrl-C 退出）", flush=True)
     n = 0
     now_wall = time.time()
+    _err_at: dict[str, float] = {}
     try:
         while ticks is None or n < ticks:
             t0 = time.monotonic()
@@ -100,7 +101,11 @@ async def run(cfg, ticks: int | None) -> None:
                         witness.persona.on_digest()
                         store.set_state("last_digest", now_wall)
             except ModelError as e:
-                print(f"[engine] LLM 暂不可用，下轮重试：{e}", flush=True)
+                key = str(e)[:80]
+                if time.time() - _err_at.get(key, 0) > 300:
+                    _err_at[key] = time.time()
+                    print(f"[engine] LLM 暂不可用，下轮重试：{e}", flush=True)
+                time.sleep(15)
             n += 1
             if n % 60 == 0:
                 s = sensor.stats

@@ -67,6 +67,7 @@ class Witness:
         self.cfg = cfg
         self.log = log
         self.kb = KB(store)
+        self._err_log_at: dict[str, float] = {}
         self.stats = {"calls": 0, "parse_fail": 0, "discarded": 0, "anchors": 0}
         self._system = SYSTEM_PROMPT
 
@@ -117,6 +118,14 @@ class Witness:
         messages = [{"role": "system", "content": ctx},
                     image_message(turn_text, obs_row["ref"])]
         return messages, {"mode": mode, "n_since": n_since, "age_min": age_min}
+
+    def _log_err(self, msg: str) -> None:
+        """同类错误 5 分钟最多记一次（防刷屏毁日志）。"""
+        key = msg[:80]
+        now = time.time()
+        if now - self._err_log_at.get(key, 0) > 300:
+            self._err_log_at[key] = now
+            self.log(msg)
 
     def _kb_hits(self) -> list[str]:
         """唤起：KB.keys 命中近期 small 内容；!always 周期重放；!at 到点（KB 类负责）。"""
@@ -257,9 +266,8 @@ class Witness:
                 self.store.set_state("witness_cursor", last_id)
             except ModelError as e:
                 self.stats["errors"] = self.stats.get("errors", 0) + 1
-                if "429" in str(e):
-                    time.sleep(60)  # 限流/配额退避；游标不推进，下轮重试
-                self.log(f"[witness] 模型故障，游标不推进（下轮重试）：{e}")
+                time.sleep(30)  # 任何模型故障都退避；游标不推进，下轮重试
+                self._log_err(f"[witness] 模型故障，游标不推进：{e}")
                 break
         if last_id > cursor:
             self.store.set_state("witness_cursor", last_id)
