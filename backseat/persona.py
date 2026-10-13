@@ -27,20 +27,36 @@ MOOD_COLORS = {
 }
 LARGE_SALIENCE = 0.85
 
-PERSONA_SYSTEM = """你是「弹幕君」：坐在用户人生后座的 AI 伴侣，看完全程，忍不住评论。
+PERSONA_SYSTEM_ASSISTANT = """你是「弹幕君」：坐在用户人生后座的助手。你的职责是让用户看到他自己看不到的东西。
+
+铁律（违反即沉默）：
+1. 禁止复述屏幕上用户自己能看见的内容（剧情/画面/正在做什么）——那是废话
+2. 说话的唯一理由 = 信息不对称：你知道而用户不知道的东西。可用素材：
+   [洞察候选]（跨时间的重复/间隔/累积/异常）、[KB命中行]（长期知识）、
+   [USER_MODEL]（你对他的理解）、[近期事实]（仅作为洞察的依据，不得直接转述）
+3. 若没有值得说的话 → {"silence": true}。安静是常态，有意义才开口
 
 表达契约（只输出一个 JSON 对象）：
-{"content":"一句话弹幕（中文，≤40字，毒舌但有爱）",
+{"content":"一句话（中文，≤40字；可以有梗，但必须有信息量）",
  "mood":"neutral|focused|happy|frustrated|mocking|guilty|anxious|excited|shocked|tired",
- "salience":0.0~1.0,
- "silence":false}
+ "salience":0.0~1.0, "silence":false}
+- mood 分配：日常陈述用 neutral/focused；只有真有笑点才 mocking；坏消息 frustrated/anxious
+- 不做氛围组；不寒暄；不为了说话而说话
+
+记忆引擎说明（固定）：[洞察候选] 是确定性挖掘器从长期记忆中算出的；[KB命中行] 与
+USER_MODEL 由记忆引擎注入；[近期事实] 是流水，不是你说的话——非你生成。"""
+
+PERSONA_SYSTEM_COMPANION = """你是「弹幕君」：坐在用户人生后座的 AI 伴侣，看完全程，忍不住评论。
+
+表达契约（只输出一个 JSON 对象）：
+{"content":"一句话弹幕（中文，≤40字，有梗）",
+ "mood":"neutral|focused|happy|frustrated|mocking|guilty|anxious|excited|shocked|tired",
+ "salience":0.0~1.0, "silence":false}
 - 事实由引擎注入，你只负责"怎么说"；不编造未提供的事实
 - 沉默权：没梗/不值得说就 {"silence": true}——安静是常态
-- dedup_key 自动取自 content（引擎去重）
 
-记忆引擎说明（固定）：你会看到 USER_MODEL（对用户的当前理解，知识·名词）、
-新事实（SMALLS，历史·动词）、[KB命中行]（长期知识自动浮现）、
-expressions尾部（你自己最近说过什么）——均由记忆引擎注入，非你生成。"""
+记忆引擎说明（固定）：USER_MODEL=对用户的当前理解；新事实=流水；
+[KB命中行]=长期知识自动浮现；expressions尾部=你最近说过什么。均由引擎注入。"""
 
 
 def parse_draft(text: str) -> dict | None:
@@ -122,12 +138,20 @@ class Persona:
         self.cfg = cfg
         self.outlet = outlet or DanmakuOutlet()
         self.log = log
+        self.mode = getattr(cfg, "persona_mode", "assistant")
         self.stats = {"drafts": 0, "throttled": 0, "dup": 0, "silence": 0,
                       "parse_fail": 0, "spoken": 0}
-        self._system = PERSONA_SYSTEM
+        self._system = (PERSONA_SYSTEM_ASSISTANT if self.mode == "assistant"
+                        else PERSONA_SYSTEM_COMPANION)
+        from .insight import InsightMiner
+        self.miner = InsightMiner(store, cfg)
+        self._insights: list[dict] = []
 
     # —— 触发判定（封闭集合，DESIGN §4 链路 G）——
     def should_speak(self, mini_row) -> tuple[bool, str]:
+        self._insights = self.miner.candidates() if self.mode == "assistant" else []
+        if self._insights:
+            return True, f"洞察：{self._insights[0]['detail'][:24]}"
         imp = (json.loads(mini_row["payload"] or "{}").get("importance")) \
             if mini_row["payload"] else None
         if imp is not None and imp >= 0.7:
@@ -212,8 +236,11 @@ class Persona:
                 return True
         return False
 
-    # —— 周期 digest（WALKTHROUGH T8：无高重要度事件时也定期开口，可校准频率）——
+    # —— 周期 digest（WALKTHROUGH T8）——
     def on_digest(self) -> int | None:
+        if self.mode == "assistant" and not self.miner.candidates():
+            self.stats["silence"] += 1
+            return None  # 无洞察则定期也不开口（不说话 > 说废话）
         recent = self.store.session_stream(limit=10)
         if not recent:
             return None
@@ -256,6 +283,12 @@ class Persona:
         st = self.store
         ctx = self._system + "\n"
         ctx += f"[USER_MODEL]\n{json.dumps(st.get_state('user_model', {}), ensure_ascii=False)}\n"
+        if self.mode == "assistant":
+            ins = self.miner.candidates()
+            if ins:
+                ctx += "[洞察候选]\n" + "\n".join(i["detail"] for i in ins) + "\n"
+            else:
+                ctx += "[洞察候选]\n（无）——silence 是正确输出\n"
         ctx += f"[近期事实]\n{body}\n"
         tail = st.conn.execute(
             "SELECT content FROM expressions WHERE kind='speak' "
@@ -271,6 +304,11 @@ class Persona:
         st = self.store
         ctx = self._system + "\n"
         ctx += f"[USER_MODEL]\n{json.dumps(st.get_state('user_model', {}), ensure_ascii=False)}\n"
+        if self.mode == "assistant":
+            if self._insights:
+                ctx += "[洞察候选]\n" + "\n".join(i["detail"] for i in self._insights) + "\n"
+            else:
+                ctx += "[洞察候选]\n（无）——若新事实本身不构成用户不知道的信息，请沉默\n"
         ctx += f"[新事实]\n{fmt_wall(mini_row['ts_start'])} {mini_row['content']}\n"
         kb_hits = self.kb_hit_texts(mini_row["content"] or "")
         if kb_hits:

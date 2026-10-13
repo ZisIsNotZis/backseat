@@ -37,6 +37,7 @@ class Config:
     process_window: float = 20.0        # 挑选器处理窗（=中档节奏）
     blank_std: float = 6.0              # 空帧拦截：32x32 灰度 std 阈值
     digest_min: float = 20.0            # 人格层周期 digest（分钟）：频率校准旋钮
+    persona_mode: str = "assistant"     # assistant=信息不对称优先；companion=氛围组（显式开启）
 
     # —— 模型 ——
     model: str = "github_copilot/gpt-6-luna"  # 月配额 10-01 重置；备选 volcengine（5h 滚动配额）
