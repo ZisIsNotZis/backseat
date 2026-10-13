@@ -7,12 +7,15 @@ Persona 插件「弹幕君」：订阅事实流（importance≥线 / KB命中 / 
 
 出口协议：Outlet(draft) -> status 回执。danmaku 出口 = 子进程 danmaku_engine（stdin
 JSON-lines），mood→颜色、salience≥0.85→大字（双行带），未知 mood 降级 neutral。
+引擎逐条回执（{"id","status"}）经 ReceiptReader 关联：确认真渲染才 "shown"，否则
+"sent"（已投递未确认）——"shown" 语义可信（RUNBOOK 坑 #6）。
 """
 
 from __future__ import annotations
 
 import json
 import subprocess
+import threading
 import time
 
 from .clock import Stamp, fmt_wall
@@ -82,41 +85,114 @@ def parse_draft(text: str) -> dict | None:
     return {"content": c.strip(), "mood": mood, "salience": float(sal)}
 
 
-class DanmakuOutlet:
-    """弹幕出口：托管 danmaku_engine 子进程（stdin JSON-lines）。点击穿透。"""
+class ReceiptReader:
+    """按 id 关联引擎逐条回执（后台线程读引擎 stdout 行）。
 
-    def __init__(self) -> None:
+    引擎每上屏一条带 id 的输入回一行 {"id":N,"status":"shown|skipped"}。非回执行
+    （引擎可能打印的 stats 等）忽略。旧引擎不回执 → 等待超时，调用方按"未确认"处理。
+    """
+
+    def __init__(self, stream) -> None:
+        self._stream = stream
+        self._cv = threading.Condition()
+        self._receipts: dict = {}
+        self._thread = threading.Thread(target=self._read_loop, daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def _read_loop(self) -> None:
+        for line in self._stream:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            mid, status = obj.get("id"), obj.get("status")
+            if mid is None or status not in ("shown", "skipped"):
+                continue
+            with self._cv:
+                self._receipts[mid] = status
+                self._cv.notify_all()
+
+    def wait(self, mid, timeout: float) -> str | None:
+        """等 id 的回执；超时/引擎退出返回 None（调用方按未确认处理）。"""
+        deadline = time.monotonic() + timeout
+        with self._cv:
+            while mid not in self._receipts:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return None
+                self._cv.wait(remaining)
+            return self._receipts.pop(mid)
+
+
+def _spawn_engine() -> subprocess.Popen:
+    """以 stdout=PIPE 托管引擎，使逐条回执可读（stderr 丢弃）。"""
+    return subprocess.Popen(
+        ["python3", "-m", "backseat.outlets.danmaku_engine"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL, text=True, bufsize=1)
+
+
+class DanmakuOutlet:
+    """弹幕出口：托管 danmaku_engine 子进程（stdin JSON-lines），按 id 收逐条回执。
+
+    引擎落位成功回 "shown"、无空余 lane 回 "skipped"。render 在上界
+    （≤RECEIPT_TIMEOUT）内等回执：shown→"shown"（确认真渲染）；skipped/超时/旧引擎
+    无回执→"sent"（已投递但未确认渲染）；写失败→"failed"。等待有上界，不拖累守护
+    进程 1s 主循环。点击穿透。
+    """
+
+    RECEIPT_TIMEOUT = 0.5
+
+    def __init__(self, spawn=None) -> None:
         self.proc: subprocess.Popen | None = None
-        self.stats = {"shown": 0, "push_fail": 0}
+        self._reader: ReceiptReader | None = None
+        self._spawn = spawn or _spawn_engine
+        self._next_id = 0
+        self.stats = {"shown": 0, "push_fail": 0, "skipped": 0, "unconfirmed": 0}
 
     def _ensure(self) -> bool:
         if self.proc is not None and self.proc.poll() is None:
             return True
         try:
-            self.proc = subprocess.Popen(
-                ["python3", "-m", "backseat.outlets.danmaku_engine"],
-                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL, text=True, bufsize=1)
-            return True
+            self.proc = self._spawn()
         except OSError:
             return False
+        self._reader = ReceiptReader(self.proc.stdout)
+        self._reader.start()
+        return True
 
     def render(self, content: str, mood: str, salience: float) -> str:
-        """出口自行做介质翻译（mood→色、salience→字号）。返回 status 回执。"""
+        """出口自行做介质翻译（mood→色、salience→字号）。返回真实 status 回执。"""
         if not self._ensure():
             return "failed"
+        self._next_id += 1
+        mid = self._next_id
         try:
             self.proc.stdin.write(json.dumps(
-                {"text": content, "color": MOOD_COLORS.get(mood, "#FFFFFF"),
+                {"id": mid, "text": content,
+                 "color": MOOD_COLORS.get(mood, "#FFFFFF"),
                  "size": "large" if salience >= LARGE_SALIENCE else "small"},
                 ensure_ascii=False) + "\n")
             self.proc.stdin.flush()
-            self.stats["shown"] += 1
-            return "shown"  # push 即视作渲染（引擎无逐条回执）
         except (BrokenPipeError, OSError):
             self.proc = None
+            self._reader = None
             self.stats["push_fail"] += 1
             return "failed"
+        receipt = self._reader.wait(mid, self.RECEIPT_TIMEOUT) if self._reader else None
+        if receipt == "shown":
+            self.stats["shown"] += 1
+            return "shown"
+        if receipt == "skipped":
+            self.stats["skipped"] += 1
+        else:
+            self.stats["unconfirmed"] += 1
+        return "sent"
 
     def close(self) -> None:
         if self.proc and self.proc.poll() is None:
