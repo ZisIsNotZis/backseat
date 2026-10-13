@@ -27,6 +27,67 @@ def draft(content, mood="neutral", salience=0.5):
                       ensure_ascii=False)
 
 
+def session_insight() -> None:
+    """连续会话起点必须由 observations 时间线推导（跨停机 gap 自愈，不依赖陈旧 state）。"""
+    cfg = Config()
+    thresh = cfg.gap_close_min * 60  # 30min
+    now0 = time.time()
+
+    def add_obs(store, base, span, step=600):
+        for i in range(int(span // step) + 1):
+            t = base + i * step
+            store.insert("observations", ts_wall=t, ts_mono=t, sensor="screen",
+                         kind="screen.notable")
+
+    # 用例1：段 t0..t0+2h → gap 100h → 段 t1..t1+1h；连续会话应为 1h（而非 103h）
+    with tempfile.TemporaryDirectory() as td:
+        store = Store(Path(td) / "a.db")
+        t0 = now0 - 103 * 3600
+        add_obs(store, t0, 2 * 3600)                 # 段 A：2h
+        t1 = t0 + 2 * 3600 + 100 * 3600              # 停机 100h
+        add_obs(store, t1, 1 * 3600)                 # 段 B：1h
+        now = t1 + 3600                              # 当前时刻=最新观察
+        # 陈旧持久化 state（旧实现依赖它 → 会算成 103h）：新算法必须忽略
+        store.set_state("session_start_wall", t0)
+        miner = InsightMiner(store, cfg)
+        assert now - miner._session_start(now) == 3600, miner._session_start(now)
+        cands = miner.candidates(now=now, limit=5)
+        assert not any(c["kind"] == "long_session" for c in cands), cands
+        print("session OK: 跨 100h 停机 gap 后连续会话=1h（陈旧 state 被忽略）")
+        store.close()
+
+    # 用例2：连续 7h → long_session 触发（阈值 6h 不变）
+    with tempfile.TemporaryDirectory() as td:
+        store = Store(Path(td) / "b.db")
+        t0 = now0 - 7 * 3600
+        add_obs(store, t0, 7 * 3600, step=900)       # 7h，15min 间隔
+        now = t0 + 7 * 3600
+        cands = InsightMiner(store, cfg).candidates(now=now, limit=5)
+        ls = [c for c in cands if c["kind"] == "long_session"]
+        assert ls and "7.0 小时" in ls[0]["detail"], cands
+        print("session OK: 连续 7h → long_session 触发:", ls[0]["detail"])
+        store.close()
+
+    # 用例3：边界——gap 恰等于阈值不断（同一会话）；略大即断
+    with tempfile.TemporaryDirectory() as td:
+        base = now0 - 3 * thresh
+        eq = Store(Path(td) / "eq.db")
+        for t in (base, base + thresh):
+            eq.insert("observations", ts_wall=t, ts_mono=t, sensor="screen",
+                      kind="screen.notable")
+        assert InsightMiner(eq, cfg)._session_start(base + thresh) == base, \
+            "gap 恰等于阈值应视为同一会话"
+        eq.close()
+        over = Store(Path(td) / "over.db")
+        for t in (base, base + thresh + 1):
+            over.insert("observations", ts_wall=t, ts_mono=t, sensor="screen",
+                        kind="screen.notable")
+        assert InsightMiner(over, cfg)._session_start(base + thresh + 1) == base + thresh + 1, \
+            "gap 超阈值应断开"
+        over.close()
+        print("session OK: 边界 gap==阈值不断，>阈值即断")
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory() as td:
         store = Store(Path(td) / "t.db")
@@ -91,6 +152,7 @@ def main() -> None:
         bs = [c for c in cands2 if c["topic"] == "backseat"]
         assert len(bs) <= 1, bs
         store.close()
+    session_insight()
     print("\nInsight smoke: ALL PASS")
 
 
