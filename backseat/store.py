@@ -149,5 +149,64 @@ class Store:
         row = self.conn.execute("SELECT COALESCE(SUM(bytes),0) AS b FROM observations").fetchone()
         return int(row["b"])
 
+    # —— L0 原始层驱逐（DESIGN §8）——
+    def _anchor_obs_ids(self) -> set[int]:
+        """最近一条 anchor 消息引用的观察 id（ANCHOR 引用帧 = 驱逐豁免）。"""
+        row = self.conn.execute(
+            "SELECT obs_ids FROM messages WHERE level='small' AND type='anchor' "
+            "ORDER BY id DESC LIMIT 1").fetchone()
+        if not row or not row["obs_ids"]:
+            return set()
+        try:
+            return {int(x) for x in json.loads(row["obs_ids"])}
+        except (ValueError, TypeError):
+            return set()
+
+    def evict_l0(self, budget_bytes: int, chunk: int = 200) -> dict:
+        """L0 原始层驱逐：按 ts_wall FIFO（最旧优先）直到水位 <= budget_bytes 或
+        无可驱逐对象。删 ref 指向的 JPEG 并把该行 ref 置 NULL（保留行——时间线与
+        flashback 降级为纯文字，DESIGN §8）。
+
+        豁免（不删 ref，保留 ref_full）：pinned=1；最近 anchor 的 obs_ids 引用帧；
+        ref_full IS NOT NULL 的全分辨率副本。文件已缺失不报错（计入 missing_files）。
+        返回 {freed_bytes, evicted, exempt, missing_files, used_before, used_after}。
+        """
+        used = self.storage_used()
+        stats = {"freed_bytes": 0, "evicted": 0, "exempt": 0, "missing_files": 0,
+                 "used_before": used, "used_after": used}
+        if used <= budget_bytes:
+            return stats
+        protected = self._anchor_obs_ids()
+        after_wall, after_id = -1e18, 0
+        while used > budget_bytes:
+            rows = self.conn.execute(
+                "SELECT id, ts_wall, ref, ref_full, bytes, pinned FROM observations "
+                "WHERE ref IS NOT NULL AND (ts_wall > ? OR (ts_wall = ? AND id > ?)) "
+                "ORDER BY ts_wall, id LIMIT ?",
+                (after_wall, after_wall, after_id, chunk)).fetchall()
+            if not rows:
+                break  # 无可驱逐对象（ref 全 NULL 或只剩豁免）
+            for r in rows:
+                after_wall, after_id = r["ts_wall"], r["id"]
+                if used <= budget_bytes:
+                    break
+                if r["pinned"] or r["id"] in protected or r["ref_full"]:
+                    stats["exempt"] += 1
+                    continue
+                try:
+                    Path(r["ref"]).unlink()
+                except OSError:
+                    # 文件已缺失/不可删：计入统计，仍置 NULL 计账，不阻断驱逐
+                    stats["missing_files"] += 1
+                self.conn.execute("UPDATE observations SET ref=NULL, bytes=0 WHERE id=?",
+                                  (r["id"],))
+                freed = int(r["bytes"] or 0)
+                stats["freed_bytes"] += freed
+                stats["evicted"] += 1
+                used -= freed
+            self.conn.commit()
+        stats["used_after"] = self.storage_used()
+        return stats
+
     def close(self) -> None:
         self.conn.close()

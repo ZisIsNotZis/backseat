@@ -109,10 +109,19 @@ async def run(cfg, ticks: int | None) -> None:
             n += 1
             if n % 60 == 0:
                 s = sensor.stats
+                used = store.storage_used()
+                # 存储预算驱逐（DESIGN §8）：仅超预算时动作，FIFO 删最旧非豁免帧
+                if used > cfg.storage_bytes:
+                    ev = store.evict_l0(cfg.storage_bytes)
+                    store.set_state("evict", {"ts_wall": time.time(), **ev})
+                    used = ev["used_after"]
+                    print(f"[evict] 释放={ev['freed_bytes'] >> 20}MB "
+                          f"驱逐={ev['evicted']} 豁免={ev['exempt']} "
+                          f"水位={used >> 20}MB", flush=True)
                 print(f"[{fmt_wall(time.time())}] tick={n} tier={sensor.tier} "
                       f"采样={s['samples']} 入选={s['admitted']} 事件={s['events']} "
                       f"空帧={s['blank']} 抓帧失败={s['grab_fail']} "
-                      f"存储={store.storage_used()>>20}MB", flush=True)
+                      f"存储={used >> 20}MB", flush=True)
             # 目标 1s tick；抓帧耗时从休眠中扣除
             await asyncio.sleep(max(0.2, 1.0 - (time.monotonic() - t0)))
             now_wall = time.time()
