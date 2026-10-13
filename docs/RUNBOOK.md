@@ -83,6 +83,8 @@ for f in tests/test_m*.py tests/test_insight.py; do python3 "$f" >/dev/null || e
 5. **会话锁屏后抓屏全黑**：真实桌面锁屏时无有效数据（黑帧被 `<40KB` 预过滤跳过）；此时用合成源。
 6. **弹幕「shown」= 引擎确认落位**：出口给每条弹幕带自增 id，引擎逐条回执（落位成功=`shown` / 无空余 lane=`skipped`，一行 JSON）；出口按 id 关联后才推进 `expressions.status`。skipped / 等待超时（上界 0.5s）/ 旧引擎无回执一律记 `sent`（已投递未确认），写失败记 `failed`。
 7. **`python3 -m backseat` 默认读取仓库根 config.toml**；若不存在则用内置默认（会看 `$DISPLAY`）。
+8. **弹幕引擎 stdin EOF 不自退**：`scripts/dev-down.sh` 停守护进程后 `python3 -m backseat.outlets.danmaku_engine` 可能残留（pattern 不匹配引擎），需手动清理（`pkill -f backseat.outlets.danmaku_engine`）。
+9. **守护进程意外死亡时引擎侧回执 `print` 可能抛未捕获 `BrokenPipeError`**：出口已死则 stdout 读端消失，引擎逐条回执写失败（正常关闭路径不受影响）。
 
 ## 待校准/待办
 
