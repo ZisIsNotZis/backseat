@@ -64,7 +64,8 @@ python3 -m py_compile backseat/store.py backseat/__main__.py backseat/insight.py
 
 ## 最终 revision
 
-见本文件所在提交（`git log --oneline -1`，commit message：整合三 lane …）。
+- 整合提交（合并 + provenance 修正 + SSOT 文档 + 本工单）：`9bda74d`
+- 其后仅一次本文件「最终 revision」行回填（不改任何代码/文档），最终 master `HEAD` 见 `git log --oneline -1`。
 
 ## 遗留 / 阻塞
 
