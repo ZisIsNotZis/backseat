@@ -1,5 +1,6 @@
 """存储驱逐冒烟（DESIGN §8）：L0 FIFO 最旧优先、豁免（pin / ANCHOR 引用帧 /
-ref_full 全分辨率副本）、行保留 ref=NULL、水位达标、幂等、缺失文件健壮。
+ref_full 全分辨率副本）、行保留 ref=NULL、原大小存 meta.evicted_bytes（无损溯源）、
+水位达标、幂等、缺失文件健壮。
 
 运行：python3 tests/test_evict.py
 """
@@ -52,12 +53,17 @@ def main() -> None:
         assert ev["evicted"] == 2 and ev["freed_bytes"] == 1000, ev
         assert ev["exempt"] == 2, ev
         assert ev["used_after"] == 1000 and ev["used_after"] <= 1000, ev
-        # 驱逐只置 ref=NULL（保留行），文件被删
+        # 驱逐只置 ref=NULL（保留行），文件被删；原帧大小写入 meta.evicted_bytes
         rows = {r["id"]: r for r in store.conn.execute(
-            "SELECT id, ref, ref_full FROM observations ORDER BY id")}
+            "SELECT id, ref, ref_full, bytes, meta FROM observations ORDER BY id")}
         assert len(rows) == 4, "驱逐保留行（时间线/降级为纯文字）"
         assert rows[o3]["ref"] is None and rows[o4]["ref"] is None
         assert not Path(f3).exists() and not Path(f4).exists()
+        # 无损溯源：bytes 归 0，原始大小仍在 meta.evicted_bytes
+        for oid in (o3, o4):
+            assert rows[oid]["bytes"] == 0, rows[oid]
+            assert json.loads(rows[oid]["meta"])["evicted_bytes"] == 500, rows[oid]
+        print("evict provenance OK: bytes 归 0，原值存 meta.evicted_bytes")
         # 豁免两项原样保留（pin 的 ref；ref_full 的 ref + 全分辨率副本）
         assert rows[o1]["ref"] == f1 and Path(f1).exists()
         assert rows[o2]["ref"] == f2 and rows[o2]["ref_full"] == f2full
@@ -90,10 +96,13 @@ def main() -> None:
         assert ev["evicted"] == 1 and ev["freed_bytes"] == 500, ev
         assert ev["exempt"] == 1, ev
         assert ev["used_after"] == 500 and ev["used_after"] <= 500, ev
-        ra = store.conn.execute("SELECT ref FROM observations WHERE id=?", (oa,)).fetchone()
-        rb = store.conn.execute("SELECT ref FROM observations WHERE id=?", (ob,)).fetchone()
+        ra = store.conn.execute("SELECT ref, meta FROM observations WHERE id=?", (oa,)).fetchone()
+        rb = store.conn.execute(
+            "SELECT ref, bytes, meta FROM observations WHERE id=?", (ob,)).fetchone()
         assert ra["ref"] == fa and Path(fa).exists(), "anchor 引用帧不得驱逐"
+        assert ra["meta"] is None, "豁免行不动 meta"
         assert rb["ref"] is None and not Path(fb).exists()
+        assert rb["bytes"] == 0 and json.loads(rb["meta"])["evicted_bytes"] == 500
         print("evict anchor OK: 最近 anchor 引用帧豁免，其余按 FIFO 驱逐")
 
         # 新 anchor 改引用 ob → oa 不再受保护，重获可驱逐
@@ -111,7 +120,7 @@ def main() -> None:
         t = 3000.0
         gone = str(Path(td) / "gone.jpg")  # 从不创建
         live = jpeg(Path(td) / "live.jpg")
-        mk_obs(store, t + 0, gone, 400)    # 文件已缺失
+        mk_obs(store, t + 0, gone, 400)    # 文件已缺失（仍记 evicted_bytes）
         mk_obs(store, t + 1, live, 400)
         norf = store.insert("observations", ts_wall=t + 2, ts_mono=t + 2, sensor="dbus",
                             kind="dbus.notification", display="primary",
@@ -123,10 +132,14 @@ def main() -> None:
         assert ev["missing_files"] == 1, ev
         assert ev["used_after"] == 300 and ev["used_after"] <= 400, ev
         assert not Path(live).exists()
+        # 缺失文件的驱逐同样保留原大小溯源
+        for r in store.conn.execute(
+                "SELECT bytes, meta FROM observations WHERE ref IS NULL AND bytes=0"):
+            assert json.loads(r["meta"])["evicted_bytes"] == 400, r["meta"]
         r = store.conn.execute("SELECT ref, bytes FROM observations WHERE id=?",
                                (norf,)).fetchone()
         assert r["ref"] is None and r["bytes"] == 300, "ref=NULL 行保持原样"
-        print("evict robust OK: 缺失文件不报错计入统计；ref=NULL 跳过")
+        print("evict robust OK: 缺失文件不报错计入统计；ref=NULL 跳过；溯源无损")
 
     # --- 场景 4：全豁免时收敛（预算不可达也不死循环/无谓删除）---
     with tempfile.TemporaryDirectory() as td:

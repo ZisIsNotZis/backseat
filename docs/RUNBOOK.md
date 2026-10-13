@@ -47,6 +47,8 @@ python3 -m backseat --stats                      # 调用/tokens/存储/消息�
 tail -f ~/backseat-data/run.log                  # 运行日志（每分钟一行统计）
 sqlite3 ~/backseat-data/backseat.db \
   "SELECT value FROM state WHERE key='witness_cursor'; SELECT count(*) FROM observations;"
+sqlite3 ~/backseat-data/backseat.db \
+  "SELECT value FROM state WHERE key='evict';"      # 最近一次驱逐水位（freed_bytes/evicted/used_after）
 for f in tests/test_m*.py tests/test_insight.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
 ```
 
@@ -79,12 +81,11 @@ for f in tests/test_m*.py tests/test_insight.py; do python3 "$f" >/dev/null || e
 3. **后台任务输出有 20MB 上限**：守护进程必须把日志重定向到文件（`scripts/dev-up.sh` 已做）。
 4. **mpv 状态行刷爆任务输出**：合成源必须 `--no-terminal` 且重定向到 `/dev/null`。
 5. **会话锁屏后抓屏全黑**：真实桌面锁屏时无有效数据（黑帧被 `<40KB` 预过滤跳过）；此时用合成源。
-6. **弹幕「shown」不等于渲染成功**：出口回执仅代表推送成功；引擎无逐条渲染回执（待补）。
+6. **弹幕「shown」= 引擎确认落位**：出口给每条弹幕带自增 id，引擎逐条回执（落位成功=`shown` / 无空余 lane=`skipped`，一行 JSON）；出口按 id 关联后才推进 `expressions.status`。skipped / 等待超时（上界 0.5s）/ 旧引擎无回执一律记 `sent`（已投递未确认），写失败记 `failed`。
 7. **`python3 -m backseat` 默认读取仓库根 config.toml**；若不存在则用内置默认（会看 `$DISPLAY`）。
 
 ## 待校准/待办
 
 - `persona_mode=assistant` 的洞察质量与频率，需要用户用真实使用数据打分（合成视频数据只能验证机制）
-- 渲染回执（shown 语义）待补
+- 存储水位与驱逐：预算 `storage_bytes`（默认 20GB ≈ 3 周原始帧），超预算时每 60 tick 按 ts_wall FIFO 驱逐最旧非豁免帧（豁免 pin / 最近 anchor 引用帧 / 全分辨率副本），水位记于 `state.evict`；待校准 = 驱逐激进度与全分辨率副本配额是否匹配真实留存偏好
 - 输入流可插拔（RTSP/图片序列/任意 Source）见 ROADMAP 2.1 Backlog
-- 存储驱逐未实现（当前 2.0GB/20GB 预算）

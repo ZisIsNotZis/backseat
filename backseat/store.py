@@ -169,6 +169,9 @@ class Store:
 
         豁免（不删 ref，保留 ref_full）：pinned=1；最近 anchor 的 obs_ids 引用帧；
         ref_full IS NOT NULL 的全分辨率副本。文件已缺失不报错（计入 missing_files）。
+
+        置 bytes=0 前把原帧大小写入该行 meta JSON 的 evicted_bytes（无损溯源：
+        storage_used() 只认 bytes，原始大小与是否被驱逐仍可查）。
         返回 {freed_bytes, evicted, exempt, missing_files, used_before, used_after}。
         """
         used = self.storage_used()
@@ -180,7 +183,7 @@ class Store:
         after_wall, after_id = -1e18, 0
         while used > budget_bytes:
             rows = self.conn.execute(
-                "SELECT id, ts_wall, ref, ref_full, bytes, pinned FROM observations "
+                "SELECT id, ts_wall, ref, ref_full, bytes, pinned, meta FROM observations "
                 "WHERE ref IS NOT NULL AND (ts_wall > ? OR (ts_wall = ? AND id > ?)) "
                 "ORDER BY ts_wall, id LIMIT ?",
                 (after_wall, after_wall, after_id, chunk)).fetchall()
@@ -198,9 +201,17 @@ class Store:
                 except OSError:
                     # 文件已缺失/不可删：计入统计，仍置 NULL 计账，不阻断驱逐
                     stats["missing_files"] += 1
-                self.conn.execute("UPDATE observations SET ref=NULL, bytes=0 WHERE id=?",
-                                  (r["id"],))
                 freed = int(r["bytes"] or 0)
+                try:
+                    meta = json.loads(r["meta"]) if r["meta"] else {}
+                except (ValueError, TypeError):
+                    meta = {}
+                if not isinstance(meta, dict):
+                    meta = {}
+                meta["evicted_bytes"] = freed
+                self.conn.execute(
+                    "UPDATE observations SET ref=NULL, bytes=0, meta=? WHERE id=?",
+                    (json.dumps(meta, ensure_ascii=False), r["id"]))
                 stats["freed_bytes"] += freed
                 stats["evicted"] += 1
                 used -= freed
