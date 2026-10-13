@@ -93,7 +93,7 @@ class CommentWindow(QWidget):
 
 # --- engine ------------------------------------------------------------------
 class Engine(QObject):
-    pushRequested = pyqtSignal(str, str, str)   # text, color, size
+    pushRequested = pyqtSignal(str, str, str, object)   # text, color, size, id(可选)
 
     def __init__(self, duration_ms=None):
         super().__init__()
@@ -128,8 +128,9 @@ class Engine(QObject):
         self.anim.timeout.connect(self.tick)
 
     # public API (thread-safe: emit -> queued slot on main thread)
-    def push(self, text, color="#FFFFFF", size="small"):
-        self.pushRequested.emit(str(text), str(color), str(size))
+    def push(self, text, color="#FFFFFF", size="small", mid=None):
+        """mid=客户端自增 id；提供时落位后向 stdout 回一行回执（无 id 不回执）。"""
+        self.pushRequested.emit(str(text), str(color), str(size), mid)
 
     def close_feed(self):
         self.feed_closed = True
@@ -145,9 +146,10 @@ class Engine(QObject):
         m = max(w, lane["last_w"])
         return (now - lane["last_start"]) >= LIFETIME_MS * m / (self.W + m) + EPS_MS
 
-    def _do_push(self, text, color, size):
+    def _do_push(self, text, color, size, mid=None):
         now = self.clock.elapsed()
         if self.duration_ms is not None and now > self.duration_ms:
+            self._receipt(mid, placed=False)   # 时限外：未落位，明确回执防客户端无界等待
             return
         want_large = (size == "large")
         placed = False
@@ -170,6 +172,14 @@ class Engine(QObject):
             self.stats["placed"] += 1
         else:
             self.stats["skipped"] += 1
+        self._receipt(mid, placed)
+
+    def _receipt(self, mid, placed):
+        """逐条回执：落位成功=shown、无空余 lane=skipped（无 id 不回执）。"""
+        if mid is None:
+            return
+        print(json.dumps({"id": mid, "status": "shown" if placed else "skipped"},
+                         ensure_ascii=False), flush=True)
 
     def _spawn(self, text, color, lane_ids, large):
         font = self.font_l if large else self.font_s
@@ -257,9 +267,11 @@ def run_daemon():
 
 
 
-# --- Backseat Outlet 适配：stdin JSON-lines 守护（一行一条：{"text","color","size"}）---
+# --- Backseat Outlet 适配：stdin JSON-lines 守护（一行一条：{"text","color","size","id"?}）---
 def run_stdin_daemon():
-    """从 stdin 读 JSON 行实时上屏。Backseat 守护进程以子进程方式托管本引擎。"""
+    """从 stdin 读 JSON 行实时上屏；带 id 的输入逐条回执到 stdout。
+
+    Backseat 守护进程以子进程方式托管本引擎（stdout=PIPE），据 id 关联回执。"""
     import threading
     app = QApplication(sys.argv)
     app.setApplicationName("backseat-danmaku")
@@ -275,7 +287,7 @@ def run_stdin_daemon():
             try:
                 e = json.loads(line)
                 eng.push(e.get("text", ""), e.get("color", "#FFFFFF"),
-                         e.get("size", "small"))
+                         e.get("size", "small"), mid=e.get("id"))
             except (json.JSONDecodeError, TypeError):
                 pass
     threading.Thread(target=feed, daemon=True).start()

@@ -1,8 +1,10 @@
 """M5 冒烟：人格层草稿契约、引擎闸门（节流/去重/沉默权）、弹幕出口介质翻译、
-expressions 溯源与状态回执。FakeModel + 假出口，离线全过。
+expressions 溯源与状态回执、引擎逐条回执关联（shown 语义可信）。FakeModel + 假出口/假 pipe，
+离线全过（无需 X display）。
 运行：python3 tests/test_m5.py
 """
 
+import io
 import json
 import sys
 import tempfile
@@ -12,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backseat.config import Config
-from backseat.persona import DanmakuOutlet, Persona, parse_draft
+from backseat.persona import DanmakuOutlet, Persona, ReceiptReader, parse_draft
 from backseat.store import Store
 from backseat.trajectory import Trajectory
 
@@ -120,6 +122,41 @@ def main() -> None:
         assert DanmakuOutlet and len(__import__("backseat.persona",
                                                 fromlist=["MOOD_COLORS"]).MOOD_COLORS) == 10
         print("mood map OK: 10 情绪闭集 → 颜色；salience>=0.85 → large")
+
+        # --- 引擎逐条回执：stdout 按 id 关联，非回执行忽略，超时返回 None ---
+        r = ReceiptReader(io.StringIO('engine stats: x\nnot json\n'
+                                      '{"id":2,"status":"skipped"}\n'
+                                      '{"id":1,"status":"shown"}\n'))
+        r.start()
+        assert r.wait(1, 0.5) == "shown"      # 乱序也按 id 关联
+        assert r.wait(2, 0.5) == "skipped"
+        assert r.wait(3, 0.05) is None          # 无该 id → 超时
+        print("receipt OK: stdout 逐行回执按 id 关联；非回执行忽略；超时返回 None")
+
+        class FakeProc:
+            """假引擎进程：stdin 可写、stdout 可读、poll() 返回存活。"""
+
+            def __init__(self, engine_stdout: str = "") -> None:
+                self.stdin = io.StringIO()
+                self.stdout = io.StringIO(engine_stdout)
+
+            def poll(self):
+                return None
+
+        # 落位成功 → shown
+        o1 = DanmakuOutlet(spawn=lambda: FakeProc('{"id":1,"status":"shown"}\n'))
+        assert o1.render("哈", "mocking", 0.5) == "shown" and o1.stats["shown"] == 1
+        # 无空余 lane（引擎回 skipped）→ 不再谎报 shown，降级 sent
+        o2 = DanmakuOutlet(spawn=lambda: FakeProc('{"id":1,"status":"skipped"}\n'))
+        assert o2.render("哈", "mocking", 0.5) == "sent" and o2.stats["shown"] == 0
+        assert o2.stats["skipped"] == 1
+        # 旧引擎无回执 → 上界等待超时 → sent（不阻塞主循环）
+        o3 = DanmakuOutlet(spawn=lambda: FakeProc())
+        o3.RECEIPT_TIMEOUT = 0.05
+        t1 = time.monotonic()
+        assert o3.render("哈", "mocking", 0.5) == "sent" and o3.stats["unconfirmed"] == 1
+        assert time.monotonic() - t1 < 1.0, "等待必须有上界（≤1s）"
+        print("render status OK: placed→shown / skipped→sent / 无回执→sent（shown 语义可信）")
 
         store.close()
     print("\nM5 smoke: ALL PASS")
