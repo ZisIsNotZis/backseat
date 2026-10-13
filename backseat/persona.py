@@ -96,6 +96,11 @@ class ReceiptReader:
         self._stream = stream
         self._cv = threading.Condition()
         self._receipts: dict = {}
+        # 迟到回执有界化：id 由 DanmakuOutlet 单调递增且逐个同步等待，故 wait(N) 一旦
+        # 超时，所有 id<=N 的回执都已无意义（不再有人取）。记下已放弃的最大 id，读线程
+        # 据此丢弃迟到回执——否则字典会随超时次数无界增长（引擎冷启动 >0.5s 时首条必
+        # 触发）。上界 = 在途请求数（实际为 1）。
+        self._abandoned_upto = 0
         self._thread = threading.Thread(target=self._read_loop, daemon=True)
 
     def start(self) -> None:
@@ -114,6 +119,8 @@ class ReceiptReader:
             if mid is None or status not in ("shown", "skipped"):
                 continue
             with self._cv:
+                if mid <= self._abandoned_upto:
+                    continue  # 已超时放弃的 id：丢弃迟到回执，防无界滞留
                 self._receipts[mid] = status
                 self._cv.notify_all()
 
@@ -124,6 +131,8 @@ class ReceiptReader:
             while mid not in self._receipts:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
+                    if mid > self._abandoned_upto:
+                        self._abandoned_upto = mid
                     return None
                 self._cv.wait(remaining)
             return self._receipts.pop(mid)

@@ -153,6 +153,45 @@ def main() -> None:
         store.close()
         print("evict converge OK: 全豁免时退出收敛、不删文件")
 
+    # --- 场景 5：同秒帧路径撞名（两条 observations 同 ref；screen.py 秒级帧名）---
+    with tempfile.TemporaryDirectory() as td:
+        store = Store(Path(td) / "t.db")
+        t = 5000.0
+        shared = jpeg(Path(td) / "shared.jpg")
+        o1 = mk_obs(store, t + 0, shared, 500)   # 大事件帧行
+        o2 = mk_obs(store, t + 0, shared, 500)   # 同 tick 采样帧行（同 ref）
+        store.insert("messages", level="small", ts_start=t, ts_end=t,
+                     content="锚", type="anchor", obs_ids=json.dumps([o1]))
+        assert store.storage_used() == 1000
+
+        # 5a：其一为 anchor 豁免 → 整条路径保留、两行 ref/bytes 均不变
+        ev = store.evict_l0(0)
+        assert ev["evicted"] == 0 and ev["freed_bytes"] == 0, ev
+        assert ev["exempt"] == 1, ev
+        rows = {r["id"]: r for r in store.conn.execute(
+            "SELECT id, ref, bytes FROM observations")}
+        assert rows[o1]["ref"] == shared and rows[o2]["ref"] == shared, rows
+        assert Path(shared).exists(), "豁免行引用的共享路径不得删除"
+        assert rows[o1]["bytes"] == 500 and rows[o2]["bytes"] == 500
+        print("evict shared-ref OK: 豁免引用路径保留，两行 ref/bytes 均不变")
+
+        # 5b：换锚去掉豁免后重跑 → 同一路径删除一次、两行 ref=NULL、freed 只计一次
+        store.insert("messages", level="small", ts_start=t + 1, ts_end=t + 1,
+                     content="新锚", type="anchor", obs_ids=json.dumps([99999]))
+        ev2 = store.evict_l0(0)
+        assert ev2["evicted"] == 1, ev2          # 同一路径只删一次
+        assert ev2["freed_bytes"] == 500, ev2    # 同一路径只计一次
+        assert ev2["used_after"] == 0, ev2       # 两行 bytes 均归零（无幻影字节）
+        rows = {r["id"]: r for r in store.conn.execute(
+            "SELECT id, ref, bytes, meta FROM observations")}
+        assert rows[o1]["ref"] is None and rows[o2]["ref"] is None, rows
+        assert rows[o1]["bytes"] == 0 and rows[o2]["bytes"] == 0
+        assert json.loads(rows[o1]["meta"])["evicted_bytes"] == 500
+        assert json.loads(rows[o2]["meta"])["evicted_bytes"] == 500
+        assert not Path(shared).exists(), "共享路径只删一次"
+        store.close()
+        print("evict shared-ref OK: 均非豁免 → 删除一次、两行 ref=NULL、freed 只计一次")
+
     print("\nM-evict smoke: ALL PASS")
 
 

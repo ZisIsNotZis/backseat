@@ -23,11 +23,11 @@
 
 `kind ∈ {speak, propose, act}`；`channel` = 出口插件 id（danmaku|notification|cli|…）；
 `mood` 闭集：`neutral focused happy frustrated mocking guilty anxious excited shocked tired`；
-`salience` 0~1 连续值；`status ∈ {sent, shown, accepted, rejected, done}`
-（sent→shown 由出口回执推进；propose/act 走 accepted/rejected/done）。
+`salience` 0~1 连续值；`status ∈ {sent, shown, accepted, rejected, done, failed}`
+（sent→shown 由出口回执推进；propose/act 走 accepted/rejected/done；出口写失败记 `failed`）。
 回执机制（弹幕出口）：引擎逐条回执（落位成功=`shown`、无空余 lane=`skipped`），出口按
-id 关联并在上界内等待——只有 `shown` 才算已渲染；skipped/超时/旧引擎无回执保持 `sent`，
-即回执不可得时不谎报 shown。
+id 关联并在上界内等待——只有 `shown` 才算已渲染；`skipped`/超时/旧引擎无回执映射为
+`sent`（已投递未确认渲染），即回执不可得时不谎报 shown。
 出口插件声明支持集，未知 mood 降级 neutral；介质翻译（颜色/字号/打断等级）是插件对
 mood/salience 的映射——弹幕不是词汇，是翻译结果。
 

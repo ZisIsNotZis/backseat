@@ -8,7 +8,9 @@ import io
 import json
 import sys
 import tempfile
+import threading
 import time
+from collections import deque
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -132,6 +134,46 @@ def main() -> None:
         assert r.wait(2, 0.5) == "skipped"
         assert r.wait(3, 0.05) is None          # 无该 id → 超时
         print("receipt OK: stdout 逐行回执按 id 关联；非回执行忽略；超时返回 None")
+
+        # --- 超时后到达的回执不无界滞留（P2-1）：引擎冷启动首条常超时 ---
+        class FeedStream:
+            """可后推行的假 stdout：模拟引擎回执比 wait 超时更晚到达。"""
+
+            def __init__(self):
+                self._cv = threading.Condition()
+                self._lines = deque()
+                self._done = False
+
+            def push(self, line):
+                with self._cv:
+                    self._lines.append(line)
+                    self._cv.notify_all()
+
+            def __iter__(self):
+                while True:
+                    with self._cv:
+                        while not self._lines and not self._done:
+                            self._cv.wait(0.2)
+                        if not self._lines:
+                            return
+                        line = self._lines.popleft()
+                    yield line
+
+        feed = FeedStream()
+        rr = ReceiptReader(feed)
+        rr.start()
+        for mid in range(1, 21):
+            assert rr.wait(mid, 0.02) is None       # 引擎慢：每条都超时
+            feed.push(json.dumps({"id": mid, "status": "shown"}) + "\n")  # 迟到回执
+        deadline = time.monotonic() + 1.0
+        while rr._receipts and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert rr._receipts == {}, f"超时后迟到回执不得滞留（字典上界）：{rr._receipts}"
+        assert rr._abandoned_upto == 20, rr._abandoned_upto
+        # 超时水位之后的新 id 仍能正常收到回执
+        feed.push(json.dumps({"id": 21, "status": "shown"}) + "\n")
+        assert rr.wait(21, 0.5) == "shown"
+        print("receipt bound OK: 超时后迟到回执被丢弃，字典不随超时次数增长")
 
         class FakeProc:
             """假引擎进程：stdin 可写、stdout 可读、poll() 返回存活。"""

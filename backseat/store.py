@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS expressions (
   salience  REAL,                      -- 0~1 重要度（出口映射字号/打断等级）
   dedup_key TEXT,
   source_refs TEXT,                   -- json 溯源：[{table:'messages',id:…},…]
-  status    TEXT NOT NULL DEFAULT 'sent',  -- sent|shown|accepted|rejected|done
+  status    TEXT NOT NULL DEFAULT 'sent',  -- sent|shown|accepted|rejected|done|failed
   meta      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_expr_ts ON expressions(ts_wall);
@@ -173,6 +173,19 @@ class Store:
         置 bytes=0 前把原帧大小写入该行 meta JSON 的 evicted_bytes（无损溯源：
         storage_used() 只认 bytes，原始大小与是否被驱逐仍可查）。
         返回 {freed_bytes, evicted, exempt, missing_files, used_before, used_after}。
+
+        路径级处理：帧名是秒级 `%H%M%S`，同一 tick 的大事件与采样用同一 now 抓帧 →
+        可有多行 observations 指向同一文件（screen.py）。故按 ref 路径而非按行处理：
+        · 删除前先查同一路径的所有行，只要任一行豁免（pinned / anchor 引用 /
+          ref_full）就整条路径跳过（否则会删掉豁免行仍引用的文件、并使另一行留悬空
+          ref —— DESIGN §8 豁免失效）；
+        · unlink 成功后把所有 ref=该路径 的行一并 ref=NULL、bytes=0、写 evicted_bytes
+          （行与 storage_used() 语义一致，无残留幻影字节）；
+        · 同一路径的 freed_bytes / evicted 只计一次（按当前行的 bytes 记该路径大小）。
+
+        注：多行共享同一路径时 storage_used() 本就重复累计该文件；驱逐把共享行全归零，
+        故 used_after（重算）可能比 used_before - freed_bytes 降得更多——freed_bytes
+        是每路径一次的真实释放量，used_after 才是权威水位。
         """
         used = self.storage_used()
         stats = {"freed_bytes": 0, "evicted": 0, "exempt": 0, "missing_files": 0,
@@ -181,6 +194,7 @@ class Store:
             return stats
         protected = self._anchor_obs_ids()
         after_wall, after_id = -1e18, 0
+        done_refs: set[str] = set()  # 本轮已判定/已删的路径，防同页重复处理
         while used > budget_bytes:
             rows = self.conn.execute(
                 "SELECT id, ts_wall, ref, ref_full, bytes, pinned, meta FROM observations "
@@ -193,31 +207,44 @@ class Store:
                 after_wall, after_id = r["ts_wall"], r["id"]
                 if used <= budget_bytes:
                     break
-                if r["pinned"] or r["id"] in protected or r["ref_full"]:
+                ref = r["ref"]
+                if ref in done_refs:
+                    continue
+                same = self.conn.execute(
+                    "SELECT id, bytes, pinned, ref_full, meta FROM observations "
+                    "WHERE ref = ?", (ref,)).fetchall()
+                done_refs.add(ref)
+                if any(s["pinned"] or s["id"] in protected or s["ref_full"]
+                       for s in same):
+                    # 同一路径有豁免行 → 整条路径不删（否则豁免失效 + 普通行悬空）
                     stats["exempt"] += 1
                     continue
                 try:
-                    Path(r["ref"]).unlink()
+                    Path(ref).unlink()
                 except OSError:
                     # 文件已缺失/不可删：计入统计，仍置 NULL 计账，不阻断驱逐
                     stats["missing_files"] += 1
-                freed = int(r["bytes"] or 0)
-                try:
-                    meta = json.loads(r["meta"]) if r["meta"] else {}
-                except (ValueError, TypeError):
-                    meta = {}
-                if not isinstance(meta, dict):
-                    meta = {}
-                meta["evicted_bytes"] = freed
-                self.conn.execute(
-                    "UPDATE observations SET ref=NULL, bytes=0, meta=? WHERE id=?",
-                    (json.dumps(meta, ensure_ascii=False), r["id"]))
+                freed = int(r["bytes"] or 0)  # 同一路径只按此计一次
+                for s in same:
+                    meta = self._meta_of(s["meta"])
+                    meta["evicted_bytes"] = int(s["bytes"] or 0)
+                    self.conn.execute(
+                        "UPDATE observations SET ref=NULL, bytes=0, meta=? WHERE id=?",
+                        (json.dumps(meta, ensure_ascii=False), s["id"]))
+                    used -= int(s["bytes"] or 0)  # 归零所有共享行，保持水位一致
                 stats["freed_bytes"] += freed
                 stats["evicted"] += 1
-                used -= freed
             self.conn.commit()
         stats["used_after"] = self.storage_used()
         return stats
+
+    @staticmethod
+    def _meta_of(raw) -> dict:
+        try:
+            meta = json.loads(raw) if raw else {}
+        except (ValueError, TypeError):
+            meta = {}
+        return meta if isinstance(meta, dict) else {}
 
     def close(self) -> None:
         self.conn.close()
