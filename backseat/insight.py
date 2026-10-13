@@ -13,6 +13,12 @@ from .config import Config  # noqa: F401  (类型提示用)
 import json
 import time
 
+# 连续会话回溯（走 idx_obs_ts 倒序区间扫描）：单次 SQL 取回批大小 / 总回溯行上限。
+# 正常情况第一批即遇 gap（毫秒级）；上界保证即使整库为一段连续活跃也能有限时间内返回。
+# 最细采样 2s/帧 -> 20000 行仍横跨 ≥11h，远超 long_session 的 6h 门槛。
+_SESSION_BATCH = 512
+_SESSION_SCAN_MAX = 20000
+
 
 class InsightMiner:
     def __init__(self, store, cfg) -> None:
@@ -70,16 +76,43 @@ class InsightMiner:
         if 2 <= h <= 6:
             found.append({"kind": "hour", "topic": "",
                           "detail": f"当前是 {h} 点——这个时段的活动在历史里很少见"})
-        sess_start = self.store.get_state("session_start_wall")
-        last_obs = self.store.conn.execute(
-            "SELECT max(ts_wall) m FROM observations").fetchone()["m"]
-        if last_obs and (not sess_start or now - last_obs > self.cfg.gap_close_min * 60):
-            self.store.set_state("session_start_wall", last_obs)
-            sess_start = last_obs
-        if sess_start and now - sess_start >= 6 * 3600:
+        sess_start = self._session_start(now)
+        if sess_start is not None and now - sess_start >= 6 * 3600:
             found.append({"kind": "long_session", "topic": "",
                           "detail": f"这一轮已经连续活跃 {(now - sess_start) / 3600:.1f} 小时"})
         return self._dedupe(found, limit)
+
+    def _session_start(self, now: float) -> float | None:
+        """当前连续会话的起点：从最新观察向前回溯，相邻观察间隔 > gap_close_min*60 即断开。
+
+        只读 observations 实际时间线（走 idx_obs_ts 倒序区间扫描），不依赖持久化 state——
+        进程重启/停机跨过 gap 后自动自愈，杜绝陈旧起点被算成连续活跃。
+        最近一次观察距今已超过 gap 时，当前无活跃会话（DESIGN：gap>30min 闭合会话），
+        返回 None。
+        """
+        thresh = self.cfg.gap_close_min * 60
+        last = self.store.conn.execute(
+            "SELECT max(ts_wall) m FROM observations").fetchone()["m"]
+        if last is None or now - last > thresh:
+            return None
+        prev, start, scanned = last, last, 0
+        while scanned < _SESSION_SCAN_MAX:
+            rows = self.store.conn.execute(
+                "SELECT ts_wall FROM observations WHERE ts_wall < ? "
+                "ORDER BY ts_wall DESC LIMIT ?", (prev, _SESSION_BATCH)).fetchall()
+            if not rows:
+                break
+            broke = False
+            for r in rows:
+                ts = r["ts_wall"]
+                scanned += 1
+                if prev - ts > thresh:
+                    broke = True
+                    break
+                start, prev = ts, ts
+            if broke or len(rows) < _SESSION_BATCH:
+                break
+        return start
 
     @staticmethod
     def _dedupe(found: list[dict], limit: int) -> list[dict]:
