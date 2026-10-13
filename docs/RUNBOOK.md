@@ -1,0 +1,90 @@
+# Backseat 运行手册（当前状态）
+
+本文件是运维事实的唯一权威来源（current state）。变更即改写，不记录流水。
+
+## 组件与依赖
+
+| 组件 | 说明 |
+|---|---|
+| `python3 -m backseat` | 主守护进程：采集 → 见证 → 压缩 → KB → 人格 → 弹幕 |
+| LiteLLM 代理 | `http://127.0.0.1:4000`（由用户会话持有，**非本项目托管**）。需 `LITELLM_BASE_URL` + `LITELLM_API_KEY` 环境变量 |
+| 帧源 | 真实桌面（`$DISPLAY`）或合成源（Xvfb `:99` + mpv 循环播放视频） |
+| 弹幕出口 | 由守护进程按需拉起 `python3 -m backseat.outlets.danmaku_engine`（stdin JSON-lines，PyQt5，点击穿透） |
+
+系统依赖：ffmpeg、x11-utils（xprop/xdpyinfo）、python3-pyqt5、mpv（合成源）、Xvfb（合成源）。
+
+## 启动与停止
+
+```sh
+# 合成数据源（无人值守/锁屏时用）：Xvfb :99 + 循环播放 ~/Videos/backseat-data/*.mp4
+./scripts/dev-up.sh --synthetic
+
+# 真实桌面（用户在机器前）：改 config.toml 去掉 display 或设为 $DISPLAY
+./scripts/dev-up.sh
+
+./scripts/dev-down.sh     # 停守护进程 + 视频源
+```
+
+守护进程读取仓库根 `config.toml`（存在即默认加载，可 `--config` 覆盖）。
+
+## 配置（config.toml）
+
+```toml
+display = ":99"                    # 帧源；删除/置空 = 用 $DISPLAY
+model = "github_copilot/gpt-6-luna"  # L1/L2/人格共用的模型
+sample_high = 6.0                  # 高档采样间隔（秒）
+batch_max = 1                      # 每处理窗最多入选帧（合成数据下压吞吐）
+digest_min = 30.0                  # 人格周期 digest 间隔（分钟）——频率旋钮
+persona_mode = "assistant"         # assistant=信息不对称优先；companion=氛围组
+insight_anomaly = false            # 深夜/超长连续类洞察（合成数据下无意义）
+min_roast_interval = 10.0          # 节流秒
+```
+
+## 验证
+
+```sh
+python3 -m backseat --stats                      # 调用/tokens/存储/消息层级汇总
+tail -f ~/backseat-data/run.log                  # 运行日志（每分钟一行统计）
+sqlite3 ~/backseat-data/backseat.db \
+  "SELECT value FROM state WHERE key='witness_cursor'; SELECT count(*) FROM observations;"
+for f in tests/test_m*.py tests/test_insight.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+```
+
+健康标准：`witness_cursor == count(observations)`（无积压）；`抓帧失败` 不持续增长；
+`run.log` 无重复错误刷屏（同类错误 5 分钟最多一条）。
+
+## 数据与日志位置
+
+| 路径 | 内容 |
+|---|---|
+| `~/backseat-data/backseat.db` | SQLite（WAL）：observations / messages / kb / expressions / metrics / state |
+| `~/backseat-data/frames/YYYYMMDD/*.jpg` | 入选帧（1600px JPEG q6） |
+| `~/backseat-data/trajectory/YYYY-MM-DD.jsonl` | 每次 LLM 调用全量（messages/响应/usage/时延） |
+| `~/backseat-data/run.log` | 守护进程日志（启动时保留尾部 500KB） |
+| `~/.litellm.log` | 代理日志（**会膨胀**，定期清理） |
+
+## 模型路由现状
+
+| 模型 | 状态 |
+|---|---|
+| `github_copilot/gpt-6-luna` | **当前选用**：约 8s/批调用、265 tok/帧；月配额，每月 1 日重置 |
+| `volcengine/glm-5.3-flash` | 备用：可用但慢（~104s/批）且**周配额 + 5 小时滚动配额**双限制 |
+| `zai-coding/glm-5.3-flash` | 用户 Coding Plan；需 litellm yml 里 `api_base: https://open.bigmodel.cn/api/coding/paas/v4`（按量端点会报余额不足） |
+| `siemens/*`、`github_copilot/claude-*` | 路由不可用 |
+
+## 已知坑（踩过的）
+
+1. **litellm yml 是多会话共享文件**：并行 agent 改动可能破坏结构（缺 `model_name` → 代理启动即崩）或被还原。改前备份，改后用 `python3 -c "import yaml; yaml.safe_load(open('/home/z/litellm.yml'))"` 验证。
+2. **代理不由本项目托管**：机器重启后可能不在（当前由用户会话启动）。本项目只依赖 `127.0.0.1:4000` 可达。
+3. **后台任务输出有 20MB 上限**：守护进程必须把日志重定向到文件（`scripts/dev-up.sh` 已做）。
+4. **mpv 状态行刷爆任务输出**：合成源必须 `--no-terminal` 且重定向到 `/dev/null`。
+5. **会话锁屏后抓屏全黑**：真实桌面锁屏时无有效数据（黑帧被 `<40KB` 预过滤跳过）；此时用合成源。
+6. **弹幕「shown」不等于渲染成功**：出口回执仅代表推送成功；引擎无逐条渲染回执（待补）。
+7. **`python3 -m backseat` 默认读取仓库根 config.toml**；若不存在则用内置默认（会看 `$DISPLAY`）。
+
+## 待校准/待办
+
+- `persona_mode=assistant` 的洞察质量与频率，需要用户用真实使用数据打分（合成视频数据只能验证机制）
+- 渲染回执（shown 语义）待补
+- 输入流可插拔（RTSP/图片序列/任意 Source）见 ROADMAP 2.1 Backlog
+- 存储驱逐未实现（当前 2.0GB/20GB 预算）

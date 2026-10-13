@@ -196,3 +196,13 @@ CLI ask 亦为 2.2 预览。
 - **自研最小工具循环**：OpenAI 兼容 tool_calls + while 循环 + 工具注册表（read_file/list_dir/atspi_query/run_readonly），约150行，无需任何 agent 框架依赖。subagent = 同一 Store 上的独立 Persona 循环实例
 - **不要 OCR**：独立 OCR 丢空间与语义 grounding。文字获取 = ATSPI（精确）> VLM转写模式（语义）；"派画在画上还是logo"只有语义模型分得清
 - **空帧/不变帧不调 LLM**：pHash 门控 + blank 检测在 L0 拦截；时间戳自证空闲，无需计数器
+
+## 12. 表达原则：信息不对称（用户拍板 2026-10-05）
+
+**说话的唯一理由 = 信息不对称：系统知道而用户不知道的东西。**
+
+- 屏幕上的内容用户自己看得见，复述（剧情/画面/正在做什么）没有价值，属废话
+- 系统独有的优势是跨时间的眼睛：重复（这是第 N 次）、间隔（隔 X 天又出现）、累积（第 X 天）、矛盾与遗忘、异常。确定性挖掘器（backseat/insight.py，无 LLM）产出候选，人格层据此表达；无候选则沉默（含周期 digest）
+- 产品定位是助手（学习→理解→kick in→propose），不是氛围组；氛围组是显式模式（persona_mode = companion），默认 assistant
+- 人格契约明令禁止复述可见内容；mood 按场景分配（日常 neutral/focused），避免只会毒舌的单边化
+

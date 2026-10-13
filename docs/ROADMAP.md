@@ -1,5 +1,19 @@
 # Backseat Roadmap
 
+## 状态（当前事实）
+
+| 里程碑 | 代码 | 确认门 |
+|---|---|---|
+| M0 数据层 | OK | OK schema 六张表定稿（用户确认） |
+| M1 传感器 | OK | 实跑一天未正式验收（合成数据可代跑，需用户确认口径） |
+| M2 见证层 | OK | OK 用户抽查通过（gpt-6-luna：约 8s/批、265 tok/帧） |
+| M3 记忆金字塔 | OK | 重启验收未做 |
+| M4 唤起记忆 | OK | callback 演示未做 |
+| M5 人格层+弹幕 | OK（含信息不对称原则修正） | 需用户用真实使用打分（频率/口吻/mood 分布） |
+| M6 打包 | OK 安装脚本/README/LICENSE/CONTRIBUTING | 全新机器安装 + GitHub 发布（需用户） |
+
+运行方法见 [RUNBOOK.md](RUNBOOK.md)。数据汇总：python3 -m backseat --stats
+
 ## Release 2.0 — 感知层（当前）
 
 范围：**仅感知层 + 弹幕出口**。帮助层不做。每个 Milestone 结束有确认门（⏸），需要用户确认后才进入下一个。

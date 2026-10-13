@@ -63,7 +63,9 @@ class InsightMiner:
             if st["days"] >= 3:
                 found.append({"kind": "streak", "topic": topic,
                               "detail": f"「{topic}」已经连续/累计 {st['days']} 天出现"})
-        # 异常：当前连续活跃时长 / 深夜时段
+        # 异常：当前连续活跃时长 / 深夜时段（可关：无人值守合成数据下无意义）
+        if not getattr(self.cfg, "insight_anomaly", True):
+            return self._dedupe(found, limit)
         h = time.localtime(now).tm_hour
         if 2 <= h <= 6:
             found.append({"kind": "hour", "topic": "",
@@ -77,6 +79,10 @@ class InsightMiner:
         if sess_start and now - sess_start >= 6 * 3600:
             found.append({"kind": "long_session", "topic": "",
                           "detail": f"这一轮已经连续活跃 {(now - sess_start) / 3600:.1f} 小时"})
+        return self._dedupe(found, limit)
+
+    @staticmethod
+    def _dedupe(found: list[dict], limit: int) -> list[dict]:
         # 去重（同 topic 只留最有价值的一条），按 kind 优先级
         prio = {"repeat": 0, "revival": 1, "streak": 2, "long_session": 3, "hour": 4}
         best: dict[str, dict] = {}
