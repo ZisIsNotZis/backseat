@@ -40,7 +40,7 @@ python3 -m backseat --stats       # 计量汇总（调用/tokens/存储水位）
 
 ## 状态
 
-Release 2.0 开发中：感知层 + 弹幕出口全链路已跑通（M0-M5），打包收尾（M6）。见 [docs/ROADMAP.md](docs/ROADMAP.md)；数据与接口契约见 [docs/SCHEMA.md](docs/SCHEMA.md)；运行与配置见 [docs/RUNBOOK.md](docs/RUNBOOK.md)；；工作流剧本 [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md)。
+Release 2.0 开发中：感知层 + 弹幕出口全链路已跑通（M0-M5），打包收尾（M6）。见 [docs/ROADMAP.md](docs/ROADMAP.md)；数据与接口契约见 [docs/SCHEMA.md](docs/SCHEMA.md)；运行与配置见 [docs/RUNBOOK.md](docs/RUNBOOK.md)；工作流剧本 [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md)。
 
 测试：`python3 tests/test_m0.py && python3 tests/test_m1.py && python3 tests/test_m2.py && python3 tests/test_m3.py && python3 tests/test_m4.py && python3 tests/test_m5.py`
 
