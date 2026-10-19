@@ -49,7 +49,7 @@ sqlite3 ~/backseat-data/backseat.db \
   "SELECT value FROM state WHERE key='witness_cursor'; SELECT count(*) FROM observations;"
 sqlite3 ~/backseat-data/backseat.db \
   "SELECT value FROM state WHERE key='evict';"      # 最近一次驱逐水位（freed_bytes/evicted/used_after）
-for f in tests/test_m*.py tests/test_insight.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
 ```
 
 健康标准：`witness_cursor == count(observations)`（无积压）；`抓帧失败` 不持续增长；

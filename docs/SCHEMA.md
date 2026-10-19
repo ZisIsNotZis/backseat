@@ -88,9 +88,13 @@ Store                       SQLite；引擎是唯一写入者（侦探只读）
 - `messages.obs_ids` 是唯一的引用通道：small 消息写入时由引擎填上它读过的 `observations.id`，读取方只读不改。
 - `content` 与 `intent` 里出现的任何可核对断言，都要能在 `obs_ids` 指向的原始观测里找到依据。
 - 高层事件（"用户回来了""用户在纠正""用户在放弃"）是语义层推断，必须带证据引用，永不作为传感器输入。
-- 推断只向下游流动，不写回 observations；语义条目须带 `obs_ids`，medium/big 的例外见本节下两条（mid 读时汇总、big 不回指且不报降级）。
+- 推断只向下游流动，不写回 observations；语义条目须带 `obs_ids`，medium/big 的例外见本节下两条（mid 读时汇总、big 递归汇总并显式降级）。
 - mid 消息的 `obs_ids` 经 `parent_id` 读时汇总：`backseat/kb.py` 的 flashback 用 `parent_id` 取子行的 `obs_ids` 并求并集，对 mid 有效。
-- big 消息目前不回指：`backseat/compressor.py` 合并出来的 medium/big 行不写 `obs_ids`，big 的子行是 medium 且其 `obs_ids` 为 NULL，于是 big 经 `parent_id` 汇总得到空集，且这条路径不报降级（`degraded=False`）——静默 `refs=[]` 的缺陷登记在 [ROADMAP.md](ROADMAP.md) 的 M0′ 交付项。
+- big 消息同样经 `parent_id` 递归下钻到叶子 small 汇总：`backseat/compressor.py` 合并出来的 medium/big 行不写 `obs_ids`，`backseat/kb.py` 的 `_gather_obs_ids` 对 `obs_ids` 为 NULL 的子行继续下钻（`FLASHBACK_MAX_DEPTH=4`，`seen` 防环），从叶子 small 汇总 `obs_ids`。
+- 下钻后仍无证据时 `degraded=True`，`degraded_reason` 取 `no_leaf_obs`（真孤儿）或 `chain_truncated`（深度上限/成环）。
+  有部分帧可回指但链被截断时 `degraded=False` 且 `degraded_reason=chain_truncated`。
+  帧被驱逐时 `degraded=True` 且 `degraded_reason=frames_evicted`，它优先于截断原因，不被吞掉。
+  不回指必须显式降级，禁止静默空集。
 - 回指解析率的判定口径住在本文的 [门槛判定程序 D1](#门槛判定程序)，里程碑门槛住在 [ROADMAP.md](ROADMAP.md) 的 M0′。
 
 ## labels 命名空间契约
@@ -126,7 +130,7 @@ labels 是独立命名空间，独占该表，与 observations / messages / expr
 本节的 D1–D8 各占一行，属"一条规则一行"，不按句拆。
 判定程序与分子分母住本节；通过阈值住 [ROADMAP.md](ROADMAP.md) 各门槛行，本节只复述以便就地判读。
 
-**D1 语义回指率（M0′）**：抽样层级只限 small 行（big 的回指缺陷另行修复，不纳入 M0′ 门槛）。从 messages 的 small 行抽样 200 条语义记录。程序：按 obs_ids 解析到 observations。判定 A＝id 存在且其 ts_wall 落在该消息 [ts_start, ts_end] 内；判定 B＝该观察的字段（key/content/ref/meta）确实支持该行的语义断言，由独立评审对 50 条抽样判定。通过＝A 达 100% 且 B ≥95%。
+**D1 语义回指率（M0′）**：D1 抽样范围固定为 small 行，不因 big 回指现状而变。从 messages 的 small 行抽样 200 条语义记录。程序：按 obs_ids 解析到 observations。判定 A＝id 存在且其 ts_wall 落在该消息 [ts_start, ts_end] 内；判定 B＝该观察的字段（key/content/ref/meta）确实支持该行的语义断言，由独立评审对 50 条抽样判定。通过＝A 达 100% 且 B ≥95%。
 
 **D2 题集指标（M1′）**：每题一个 exact-match 判定，时间类题目允许 ±60s 容差，其余字符串规范化后相等。准确率＝答对题数/总题数。引用正确率＝通过的 evidence 条数/引用总条数，单条引用通过＝被引单元在库中真实存在且持有引用声明的值、该题 `check_sql` 复算得到与答案相同的值、且该引用的时间落在答案所述区间。"绝对点"是百分点差这一单位；M1′ 的 +15 绝对点＝本法准确率与最强基线准确率之差；被测量指标名固定为"语义状态预测准确率"。
 

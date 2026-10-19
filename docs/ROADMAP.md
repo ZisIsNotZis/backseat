@@ -107,7 +107,7 @@ Release 3.0 是主线：先把"能见证且能被证伪"做出来，而不是先
 
 - 交付：统一语义状态（活动任务/当前产物/阶段/卡点/下一意图，每条带原始流引用）、eval harness、五通道接入器、每条通道的退出判据。
 - 交付（最低接入集）：最低集＝screen 事件（已实现）；ATSPI/fs/git/proc/input 以 screen-only 起步，未接入前通道 B 的判官只报已有事件类型的捕获率。
-- 交付：证据回指修复——使 big 层经 `parent_id` 递归汇总 `obs_ids`，或在无法回指时把 `degraded` 置真并暴露，禁止静默 `refs=[]`。
+- 交付：证据回指修复——已完成：判据已达成（big 可给非空证据链，或显式 `degraded=true`），big 层经 `parent_id` 递归汇总 `obs_ids`（`FLASHBACK_MAX_DEPTH=4`，`seen` 防环），无法回指时把 `degraded` 置真并暴露 `degraded_reason`，不再静默 `refs=[]`。
 - 交付：冻结自有记录快照——只读副本 + sha256，作为通道 A 的唯一输入。
 - 可选增强（不阻塞门槛）：标题字段化——把窗口标题从 `window_switch` 的 key 提升为可查询列，M1′ 的基线才可能含"只看窗口标题序列"。
 - 判官：语义字段可回指原始流；游标无积压；harness 可由同一记录重放复算。
