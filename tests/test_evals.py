@@ -142,12 +142,19 @@ def drop_counts(dropped: list[dict]) -> dict[tuple[str, str], int]:
 
 
 def check_finalize_identity(gen: dict, drops: dict) -> None:
-    """池子 − 入选题 = 该题型被 `_finalize` 拒掉的候选数：不许有候选被悄悄吞掉。"""
+    """池子 − 入选题 = 该题型被 `_finalize` 拒掉的候选数：不许有候选被悄悄吞掉。
+
+    前提 `n ≥ sum(pool_sizes)`，即全池都在配额内：`generate_questions` 在
+    `picked >= quota[kind]` 时直接 break，配额用尽后的剩余候选既不入选也不记丢弃，
+    所以 n 小于全池时池子会大于“入选题 + 拒掉数”，本恒等式不成立。
+    两处调用都用 n=100 跑全池，前提成立。
+    """
     for kind in KINDS:
         picked = sum(1 for q in gen["questions"] if q["kind"] == kind)
         rejected = sum(drops.get((kind, reason), 0) for reason in FINALIZE_REASONS)
         check(gen["pool_sizes"][kind] == picked + rejected,
-              ("丢弃统计没把 _finalize 的丢弃算进去", kind,
+              ("丢弃统计没把 _finalize 的丢弃算进去（恒等式的前提是 n ≥ sum(pool_sizes)："
+               "配额用尽后剩余候选既不入选也不记丢弃）", kind,
                gen["pool_sizes"][kind], picked, rejected))
 
 

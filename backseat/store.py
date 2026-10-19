@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_msg_level ON messages(level, folded);
 CREATE INDEX IF NOT EXISTS idx_msg_ts ON messages(ts_start);
+CREATE INDEX IF NOT EXISTS idx_msg_parent ON messages(parent_id);  -- flashback 递归下钻按 parent_id 查子行
 
 -- 唤起记忆（keys=定位符=唤起词）
 CREATE TABLE IF NOT EXISTS kb (

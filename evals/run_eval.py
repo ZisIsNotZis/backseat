@@ -272,9 +272,14 @@ def render_markdown(report: dict) -> str:
         "|---|---|---|",
     ]
     dropped = report["dropped"]
+    # 同一 (题型, 原因) 的多条记录先求和再出行：逐条打印会把 count: 1 打成 N 行同一原因。
+    by_reason: dict[tuple[str, str], int] = {}
     for d in dropped:
-        lines.append(f"| {d['kind']} | {d['reason']} | {d['count']} |")
-    if not dropped:
+        key = (d["kind"], d["reason"])
+        by_reason[key] = by_reason.get(key, 0) + d["count"]
+    for (kind, reason), count in by_reason.items():
+        lines.append(f"| {kind} | {reason} | {count} |")
+    if not by_reason:
         lines.append("| — | 无 | 0 |")
     lines += [
         "",
