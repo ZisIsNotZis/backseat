@@ -50,6 +50,9 @@ sqlite3 ~/backseat-data/backseat.db \
 sqlite3 ~/backseat-data/backseat.db \
   "SELECT value FROM state WHERE key='evict';"      # 最近一次驱逐水位（freed_bytes/evicted/used_after）
 for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+python3 scripts/freeze_snapshot.py               # 冻结当天快照（目标已存在需 --force）
+python3 scripts/freeze_snapshot.py --verify      # 校验快照哈希（默认当天目录；改日需 --dir ~/backseat-data/snapshots/<UTC 日期>），不符退出 1
+python3 evals/run_eval.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --n 50  # 在冻结快照上跑评测尺子
 ```
 
 健康标准：`witness_cursor == count(observations)`（无积压）；`抓帧失败` 不持续增长；
@@ -62,6 +65,7 @@ for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tes
 | `~/backseat-data/backseat.db` | SQLite（WAL）：observations / messages / kb / expressions / metrics / state |
 | `~/backseat-data/frames/YYYYMMDD/*.jpg` | 入选帧（1600px JPEG q6） |
 | `~/backseat-data/trajectory/YYYY-MM-DD.jsonl` | 每次 LLM 调用全量（messages/响应/usage/时延） |
+| `~/backseat-data/snapshots/<UTC 日期>/backseat.db` | 冻结快照（只读副本）+ `MANIFEST.json` + `backseat.db.sha256`；通道 A 的唯一输入 |
 | `~/backseat-data/run.log` | 守护进程日志（启动时保留尾部 500KB） |
 | `~/.litellm.log` | 代理日志（**会膨胀**，定期清理） |
 
@@ -85,6 +89,9 @@ for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tes
 7. **`python3 -m backseat` 默认读取仓库根 config.toml**；若不存在则用内置默认（会看 `$DISPLAY`）。
 8. **弹幕引擎 stdin EOF 不自退**：`scripts/dev-down.sh` 停守护进程后 `python3 -m backseat.outlets.danmaku_engine` 可能残留（pattern 不匹配引擎），需手动清理（`pkill -f backseat.outlets.danmaku_engine`）。
 9. **守护进程意外死亡时引擎侧回执 `print` 可能抛未捕获 `BrokenPipeError`**：出口已死则 stdout 读端消失，引擎逐条回执写失败（正常关闭路径不受影响）。
+10. **`freeze_snapshot.py --force` 重冻结是「先删旧再换名」**：中间有 kill 窗口；要保住旧副本就不要加 `--force`。
+11. **`messages.parent_id` 的索引 `idx_msg_parent` 由 `Store.__init__` 的 `executescript` 自动补建**：真实库尚未行使，首次以写模式打开时建索引（秒级）。
+12. **RUNBOOK 的测试清单是手写枚举**：新增 `tests/test_*.py` 必须同时加进这一行，否则不会被扫测。
 
 ## 待校准/待办
 
