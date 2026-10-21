@@ -64,26 +64,31 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backsea
 # 预演：拿冻结快照的 small 正文、用现在的写入规则重写进临时库，再对它普查（不发模型请求）
 python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --out /tmp/rehearse.db
 python3 scripts/d1_census.py --db /tmp/rehearse.db    # 预演库每行都是新规则写的，故不带 --since-msg-id
+grep -c "整行拒收" ~/backseat-data/run.log          # 沿用称呼没点名 → 整行没落库；这个数是 C2 归零的价钱
 sqlite3 -readonly ~/backseat-data/backseat.db \
-  "SELECT count(*) FROM messages WHERE level='small' AND payload LIKE '%epithet_refused%';"  # 被拒称呼的行：模型没点名 cast，正文被删薄，但没静默沿用
-grep -c "拒绝落行" ~/backseat-data/run.log          # 只剩称呼而整行被丢：这个数比拒绝数更疼
+  "SELECT count(*) FROM epithets;"                   # 称呼册的词面数（历史回填 + 新写入，不封顶）
 ```
 
 健康标准：`witness_cursor == count(observations)`（无积压）；`抓帧失败` 不持续增长；
-`run.log` 无重复错误刷屏（同类错误 5 分钟最多一条）。称呼机制的模型侧读数不看内容而看两个计数：
-`epithet_refused` 行数 / 含称呼行数 是"模型没点名"的比例，`拒绝落行` 是"整行只剩称呼"的损失；
-前者高是提示词没教会 `cast`，后者高是规则在吃正文——两者都只记数，不据此改规则（规则只看依据在不在行内）。
+`run.log` 无重复错误刷屏（同类错误 5 分钟最多一条）。称呼机制的模型侧读数只看一个计数：
+`run.log` 里 `整行拒收` 的行数 / 该时段写入的 small 行数——模型没在 `cast` 里点名本轮某张图的行，
+整行不落库（正文不改写）。轨迹里 2,163 次见证调用 0 次带 `cast`，所以这个数现在会很大；
+它高是提示词没教会 `cast`，提词器是杠杆，规则只看依据在不在行内。
 
 ## 生产判定人口（M0′ 的一次实跑）
 
 修复后的判定人口只能由一次真实运行产出；三步都能单独复算，顺序是这个：
 
 ```sh
+python3 scripts/backfill_epithets.py --db ~/backseat-data/backseat.db   # 称呼册先拿历史回填（幂等）
 ./scripts/dev-up.sh                     # 或 --synthetic：合成帧也进 observations，只是内容无意义
 # 跑够 ≥200 行 small（B 的抽样与称呼拒绝率都要这个量），再：
 python3 scripts/freeze_snapshot.py       # 冻结当天快照（默认已含 frames 段）
 python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --since-msg-id 25900
 ```
+
+回填不能省：C2 的“沿用”是跨全库比的，不回填的话修复后第一次重写历史里的名字就不在册里，写出去就是静默沿用。
+代价是这些行被整行拒收（模型从不在 `cast` 里点名——轨迹里 2,163 次见证调用 0 次带 cast），预演切片上约占一半；这是 C2 归零的价钱，不是副作用。
 
 `--since-msg-id` 一律取**旧**冻结快照的 max small id（当前 25,900），不要换成"今天"：它划的是修复前后的缝，不是日期。判定人口非空之前退出码是 2（不能确立），不是通过。
 
@@ -121,7 +126,7 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backsea
 10. **`freeze_snapshot.py --force` 重冻结是「先删旧再换名」**：中间有 kill 窗口；要保住旧副本就不要加 `--force`。
 11. **`messages.parent_id` 的索引 `idx_msg_parent` 由 `Store.__init__` 的 `executescript` 自动补建**：真实库尚未行使，首次以写模式打开时建索引（秒级）。
 12. **RUNBOOK 的测试清单是手写枚举**：新增 `tests/test_*.py` 必须同时加进这一行，否则不会被扫测。
-13. **见证层会拒绝越帧称呼**：`浅色外套男子` 这类上一行用过的人物称呼，模型没在 `cast` 里点名本轮某张图（图号从 1 起）就在正文里被删掉，并记进该行 `payload.epithet_refused` 与 `witness.stats.epithet_refused`；删空的整行丢弃不落库。正文里称呼不见时先看这两处。
+13. **见证层会整行拒收越帧称呼**：`浅色外套男子` 这类册里已有人物称呼，模型没在 `cast` 里点名本轮某张图（图号从 1 起）就**整行不落库**（正文一个字节不改），计数在 `witness.stats.epithet_refused`、日志是一行 `整行拒收`；`payload` 里没有 `epithet_refused` 这个键（行不存在）。一行事实凭空不见了，先看日志这一行。
 
 ## 待校准/待办
 

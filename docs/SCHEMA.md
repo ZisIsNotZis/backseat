@@ -91,8 +91,12 @@ Store                       SQLite；引擎是唯一写入者（侦探只读）
   - **切换句**（`从X切至Y`）：被切离的那一端就是这个断言的基帧，写入时并入本行 `obs_ids`
     （模型 `since` 点名的帧优先，缺省取上一条 small 行里 `ts_wall` 最新的那一帧——一步、不累积）——过渡的两端同在一行。
   - **通行称呼**（`浅色外套男子`）：只允许来自本行引用的帧。点名不出（`cast` 里没有落在本轮
-    图号范围内的项，或本轮根本没有帧）就在正文里删掉，并在 `payload.epithet_refused` 与
-    `stats.epithet_refused` 留痕，不沿用上一行。
+    图号范围内的项，或本轮根本没有帧）**整行不落库**，留痕在 `stats.epithet_refused` 与日志
+    （行不存在，所以没有 `payload` 可写）。不做删名字的文本手术：名字的边界在文本里不可知
+    （词面是名词前连续汉字的后缀变体，最长变体会把邻词与标记词一起吞掉）。
+    被沿用的词面（册里已有）再出现也必须点名；册子住在库里的 `epithets` 表
+    （`form` 主键、不封顶、跨重启仍在，由 `backseat/witness.py` 建），写入前由
+    `scripts/backfill_epithets.py` 拿历史回填——C2 的“被沿用”是跨全库比的。
   - **窗口**：small 行的 `[ts_start, ts_end]` 取该行 `obs_ids` 所指观测 `ts_wall` 的 min/max。
     `observations.id` 与 `ts_wall` 不同序（抓帧多路并发），按 id 取批首批尾会得到倒置窗口与
     落在自窗外的引用。历史库里这类行 104 条（引用 232/27,012 条落在自窗之外），其中窗口
@@ -110,7 +114,7 @@ Store                       SQLite；引擎是唯一写入者（侦探只读）
 
 ## labels 命名空间契约
 
-新增第 7 张表，需迁移：`backseat/store.py` 当前建了六张表（observations / messages / kb / expressions / metrics / state），labels 是第 7 张。
+新增一张表，需迁移：`backseat/store.py` 当前建了六张表（observations / messages / kb / expressions / metrics / state）；第 7 张是见证层的 `epithets`（称呼册，由 `backseat/witness.py` 建，不归 store 管），所以 labels 是第 8 张。
 
 **labels 不进 M0′**：迁移已获授权，但归属 M1′——通道 B 的判官写出来之前没有读者会用它；M0′ 期间不建该表，通道 B 的判官只报已有事件类型的捕获率，不依赖 labels。
 labels 是独立命名空间，独占该表，与 observations / messages / expressions 不共享行，也不共享 id 空间。
@@ -151,8 +155,10 @@ labels 是独立命名空间，独占该表，与 observations / messages / expr
 - **D1 C 测第三条**（依据在不在行内），分两个可机械判定的项：
   C1＝内容命中对比/过渡词面的行，`payload.switch_base` 非空且 ⊆ 本行 `obs_ids`；
   C2＝**被沿用**的通行称呼（同一词面在更早的 small 行里出现过）必须带 `payload.cast` 点名的帧，
-  否则就是静默沿用；被写成 `payload.epithet_refused` 的拒绝**不是**缺陷，静默沿用才是。
-  首次出现的称呼不算沿用：它只可能来自本帧，要求它点名等于要求模型说废话。
+  否则就是静默沿用；被整行拒收的**不是**缺陷（行不存在，就不存在被放过的主张），
+  静默沿用才是。拒绝的计数在 `stats.epithet_refused` 与日志里，所以 `payload.epithet_refused`
+  现在不会出现（判官里的那个分支因此恒为 0，不是缺陷）。
+  首次出现的称呼不算沿用：它只可能来自本帧，要求它点名等于要求模型说废话（前提是本轮有帧）。
 - 它与 A/B 正交——B 全过仍可能依据落在上一条消息的帧里，而 C 全过也不替 B 证明内容为真。
   C 的阈值住 [ROADMAP.md](ROADMAP.md)，分子分母、判定人口与命令住本节末尾。
 
