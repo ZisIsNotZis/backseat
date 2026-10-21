@@ -1,0 +1,37 @@
+# backseat 入口
+
+**这是给本节点下一次会话看的**，不是给上一层看的。`backseat` 是一个本机优先的 AI 长期伴随程序（屏幕感知 → 见证层 JSON 事实 → 记忆金字塔 → 人格层 → 弹幕出口），文档与代码都是中文注释；本目录同时是持有它 roadmap 的那个节点。
+
+## 怎么开始
+
+1. 读 [`docs/NODE.md`](docs/NODE.md)：这个节点为什么存在、roadmap 上有哪些工作包、当前决定过什么。
+2. 读 [`docs/ROADMAP.md`](docs/ROADMAP.md) 的 **M0′** 一节：要交的里程碑、门槛、判定人口、状态行。
+3. 读 `mail/`（若有）：每封信是 `kind/from/to/spend` 开头，读完先落地到 `docs/`，再删信、再提交。
+4. 跑一遍测试（13 个文件，约 12 秒）：
+
+```sh
+for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+```
+
+## 怎么继续
+
+- 门槛的机械一半用 `scripts/d1_census.py` 判（只读快照；退出码 0/1/2，2＝判定人口为空，不能确立）。
+- 判定程序与分子分母住 [`docs/SCHEMA.md`](docs/SCHEMA.md) 的「门槛判定程序」；阈值住 ROADMAP 的门槛行；不要在两处写同一个数。
+- 运行、日志、读数的日常操作住 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)。
+- 花销：本地 CPU 是 `idle-compute`，可以直接跑；模型端点 `127.0.0.1:4000` 是 `resource`，不在本目录手里——它停了就报上去，别本机替它编一个模型。
+
+## 东西在哪
+
+| 要什么 | 在哪 |
+|---|---|
+| 引擎 | `backseat/`（`witness.py` 是证据基与写入规则唯一的地方） |
+| 评测尺子 / 题集 / 快照冻结 | `evals/`、`scripts/freeze_snapshot.py`、`scripts/d1_census.py` |
+| 测试 | `tests/`（每个文件独立可跑，末尾打印 `ALL PASS（N 条断言）`） |
+| 数据 | `~/backseat-data/backseat.db`、`frames/`、`trajectory/`、`snapshots/<UTC 日期>/` |
+| 独立评审与本草稿 | `.scratch/d1-b-independent/`（评审 + 抽样 + 裁剪图，已提交） |
+
+## 哪些文档不是当前的
+
+- `docs/PAIN.md` 的「证据」节：计数停在 2026-10-19（管线停在那天），不是当下的库；要新数就跑 RUNBOOK 验证节里的查询。
+- `docs/ROADMAP.md` 的「状态（当前事实）」表里的确认门列：Release 2.0 的确认门有一半要用户亲手做（实跑一天、callback 演示、弹幕打分、全新机器安装），别把它读成"没人管"。
+- `docs/WALKTHROUGH.md` 是产品走查脚本，不是规格；规格住 `docs/DESIGN.md` 与 `docs/SCHEMA.md`。

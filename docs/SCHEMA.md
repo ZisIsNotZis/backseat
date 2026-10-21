@@ -95,7 +95,9 @@ Store                       SQLite；引擎是唯一写入者（侦探只读）
     `stats.epithet_refused` 留痕，不沿用上一行。
   - **窗口**：small 行的 `[ts_start, ts_end]` 取该行 `obs_ids` 所指观测 `ts_wall` 的 min/max。
     `observations.id` 与 `ts_wall` 不同序（抓帧多路并发），按 id 取批首批尾会得到倒置窗口与
-    落在自窗外的引用；历史库里的 104 条倒置窗口行按已知降级保留，不回填。
+    落在自窗外的引用。历史库里这类行 104 条（引用 232/27,012 条落在自窗之外），其中窗口
+    倒置的 12 条；两者按已知降级保留，不回填（[`scripts/d1_census.py`](../scripts/d1_census.py)
+    把这两个数分开数，别再合成一个数）。
 - 高层事件（"用户回来了""用户在纠正""用户在放弃"）是语义层推断，必须带证据引用，永不作为传感器输入。
 - 推断只向下游流动，不写回 observations；语义条目须带 `obs_ids`，medium/big 的例外见本节下两条（mid 读时汇总、big 递归汇总并显式降级）。
 - mid 消息的 `obs_ids` 经 `parent_id` 读时汇总：`backseat/kb.py` 的 flashback 用 `parent_id` 取子行的 `obs_ids` 并求并集，对 mid 有效。
@@ -108,7 +110,9 @@ Store                       SQLite；引擎是唯一写入者（侦探只读）
 
 ## labels 命名空间契约
 
-新增第 7 张表，需迁移【待用户确认】：`backseat/store.py` 当前建了六张表（observations / messages / kb / expressions / metrics / state），labels 是第 7 张。
+新增第 7 张表，需迁移：`backseat/store.py` 当前建了六张表（observations / messages / kb / expressions / metrics / state），labels 是第 7 张。
+
+**labels 不进 M0′**：迁移已获授权，但归属 M1′——通道 B 的判官写出来之前没有读者会用它；M0′ 期间不建该表，通道 B 的判官只报已有事件类型的捕获率，不依赖 labels。
 labels 是独立命名空间，独占该表，与 observations / messages / expressions 不共享行，也不共享 id 空间。
 
 | 字段 | 类型 | 说明 |
@@ -144,10 +148,23 @@ labels 是独立命名空间，独占该表，与 observations / messages / expr
   且该观察的 `ts_wall` 落在本行 `[ts_start, ts_end]` 内。它测引用管道，不测内容真假。
 - **D1 B 测断言与帧相符**：独立评审逐行看 `obs_ids` 指向的帧，判"该帧支持该行的语义断言"，
   50 条抽样 ≥95%。它测内容真假，测不到"断言的依据是否就在本行 `obs_ids` 里"。
-- 前两条之外，[语义层证据引用](#语义层证据引用) 的三条写入规则管的是"依据在不在行内"：切换句的
-  基帧是本行 `obs_ids` 的一员，通行称呼能在本行引用的帧里点名。它与 A/B 正交——B 全过仍可能
-  依据落在上一条消息的帧里，而这也不替 B 证明内容为真。它不是门槛：门槛住 ROADMAP，由项目
-  自己的节点定，本文只记写入规则与判定口径。
+- **D1 C 测第三条**（依据在不在行内），分两个可机械判定的项：
+  C1＝内容命中对比/过渡词面的行，`payload.switch_base` 非空且 ⊆ 本行 `obs_ids`；
+  C2＝**被沿用**的通行称呼（同一词面在更早的 small 行里出现过）必须带 `payload.cast` 点名的帧，
+  否则就是静默沿用；被写成 `payload.epithet_refused` 的拒绝**不是**缺陷，静默沿用才是。
+  首次出现的称呼不算沿用：它只可能来自本帧，要求它点名等于要求模型说废话。
+- 它与 A/B 正交——B 全过仍可能依据落在上一条消息的帧里，而 C 全过也不替 B 证明内容为真。
+  C 的阈值住 [ROADMAP.md](ROADMAP.md)，分子分母、判定人口与命令住本节末尾。
+
+**判定人口**：A 与 C 判 `messages.id` 大于 `--since-msg-id` 的 small 行——`id` 单调而历史行不会变，
+所以历史行（修复前写入，没有 `switch_base`/`cast` 可读）只作已知降级计数，不进判定。
+判定人口为空时普查退出 2（不能确立），不是通过。
+
+```sh
+python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db \
+    --since-msg-id <冻结快照的 max small id> --json .tmp/d1.json
+# 退出码：0 判定人口无缺陷 / 1 有缺陷 / 2 判定人口为空或库不可读
+```
 
 **D1 语义回指率（M0′）**：D1 抽样范围固定为 small 行，不因 big 回指现状而变。从 messages 的 small 行抽样 200 条语义记录。程序：按 obs_ids 解析到 observations。判定 A＝id 存在且其 ts_wall 落在该消息 [ts_start, ts_end] 内；判定 B＝该观察的字段（key/content/ref/meta）确实支持该行的语义断言，由独立评审对 50 条抽样判定。通过＝A 达 100% 且 B ≥95%。
 
