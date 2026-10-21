@@ -65,7 +65,7 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backsea
 python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --out /tmp/rehearse.db          # 全量
 python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --out /tmp/rehearse.db --limit 3000  # 切片，报告里的数字用它复算
 python3 scripts/d1_census.py --db /tmp/rehearse.db    # 预演库每行都是新规则写的，故不带 --since-msg-id
-grep -c "整行拒收" ~/backseat-data/run.log          # 沿用称呼没点名 → 整行没落库；这个数是 C2 归零的价钱
+grep -c "整行拒收：" ~/backseat-data/run.log    # 沿用称呼没点名 → 整行没落库 = C2 归零的价钱（带冒号：不带会把「丢弃 1 帧」那行也算一遍，翻倍）
 sqlite3 -readonly ~/backseat-data/backseat.db \
   "SELECT count(*) FROM epithets;"                   # 称呼册的词面数（历史回填 + 新写入，不封顶）
 ```
@@ -122,7 +122,7 @@ ls ~/backseat-data/run2.DONE || tail -f ~/backseat-data/run2.driver.log
 |---|---|---|
 | 落库 small 行 | `SELECT count(*) FROM messages WHERE id>25900` | 8（7 diff + 1 anchor） |
 | 入选帧 / 采样 | `run.log` 末行统计 | 39 / 124 |
-| 整行拒收 | `grep -c 整行拒收 ~/backseat-data/run.log` | 24（其中 22 次丢弃 1 帧） |
+| 整行拒收 | `grep -c "整行拒收：" ~/backseat-data/run.log` | 24（其中 22 次丢弃 1 帧；不带冒号的写法数出 48，把那行总结与「丢弃」行算了两遍） |
 | 见证调用与花销 | `trajectory/2026-10-21.jsonl` 的 usage 求和 | 32 次、285,239 in（209,024 走缓存）/ 10,999 out = $0.037 |
 | 游标积压 | `observations` 42,436 − `witness_cursor` 42,436 | 0 |
 
