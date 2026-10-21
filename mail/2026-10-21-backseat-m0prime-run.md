@@ -29,8 +29,8 @@ decision 要 root 给的（一条）：授权这次实跑，或者明确说不�
 
 - 一次实跑 = `python3 scripts/backfill_epithets.py --db ~/backseat-data/backseat.db` +
   `./scripts/dev-up.sh`（合成帧源；Xvfb/mpv 与视频都在机器上，不需要人看着），跑 1–2 小时
-  得 ≥100–200 行 small（观察到的速率 38–135 行/小时），然后 `python3 scripts/freeze_snapshot.py`
-  与上面那条普查。花的是 `gpt-6-luna` 的月配额（10 月还剩 10 天），每帧约 265 out-token，
+  得 ≥100–200 行 small（运行中的速率：快照里最忙的两天 3,254 / 3,110 行/天；run.log 最后一段
+  入选 5,791 帧 / 17.4 小时＝333 行/小时），然后 `python3 scripts/freeze_snapshot.py` 与上面那条普查。花的是 `gpt-6-luna` 的月配额（10 月还剩 10 天），每帧约 265 out-token，
   一次实跑是几万 token 的量级，不是按量计费的钱。
 - 不授权就写"不授权"：M0′ 停在门口，我不会自己开。我不替你判断，因为付配额的不是我。
 - 一条更正：`mail/2026-10-21-backseat-proxy.md` 的前提过期了。`127.0.0.1:4000` 由用户的
