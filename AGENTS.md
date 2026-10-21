@@ -16,6 +16,7 @@ for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tes
 ## 怎么继续
 
 - 门槛的机械一半用 `scripts/d1_census.py` 判（只读快照；退出码 0/1/2，2＝判定人口为空，不能确立）。
+- 实跑之前先预演：`scripts/rehearse_writes.py` 把冻结快照的 small 正文按现在的写入规则重写进临时库，再对它普查（不发模型请求）；称呼册要先用 `scripts/backfill_epithets.py` 拿历史回填。
 - 判定程序与分子分母住 [`docs/SCHEMA.md`](docs/SCHEMA.md) 的「门槛判定程序」；阈值住 ROADMAP 的门槛行；不要在两处写同一个数。
 - 运行、日志、读数的日常操作住 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)。
 - 花销：本地 CPU 是 `idle-compute`，可以直接跑；模型端点 `127.0.0.1:4000` 是 `resource`，不在本目录手里——它停了就报上去，别本机替它编一个模型。
@@ -25,7 +26,7 @@ for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tes
 | 要什么 | 在哪 |
 |---|---|
 | 引擎 | `backseat/`（`witness.py` 是证据基与写入规则唯一的地方） |
-| 评测尺子 / 题集 / 快照冻结 | `evals/`、`scripts/freeze_snapshot.py`、`scripts/d1_census.py` |
+| 评测尺子 / 题集 / 快照冻结 / 普查 / 预演 / 回填 | `evals/`、`scripts/freeze_snapshot.py`、`scripts/d1_census.py`、`scripts/rehearse_writes.py`、`scripts/backfill_epithets.py` |
 | 测试 | `tests/`（每个文件独立可跑，末尾打印 `ALL PASS（N 条断言）`） |
 | 数据 | `~/backseat-data/backseat.db`、`frames/`、`trajectory/`、`snapshots/<UTC 日期>/` |
 | 独立评审与本草稿 | `.scratch/d1-b-independent/`（评审 + 抽样 + 裁剪图，已提交） |
