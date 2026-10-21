@@ -11,12 +11,14 @@ id:      raised from BS-M0P-称呼册（worker report）与它的预演读数
 
 ## 事实（可复算）
 
-- 模型**从不**填 `cast`：`~/backseat-data/trajectory/` 里 2,163 次见证调用，响应里带
-  `"cast"` 的 **0 次**（`grep -c '"cast"' …` 逐行可见）。
+- 模型**从不**填 `cast`：`~/backseat-data/trajectory/` 里见证调用 24,553 次，响应里带
+  `"cast"` 的 **0 次**（`grep -h -o '"purpose": "witness[^"]*"' ~/backseat-data/trajectory/*.jsonl | wc -l`
+  与 `grep -h -c '"cast"' ~/backseat-data/trajectory/*.jsonl | paste -sd+ | bc`）。
 - 所以"沿用 + 未点名"的行只能整行拒收。预演切片（旧快照前 3,000 条 small 行）上：
-  写入 1,561 行、拒收 1,439 行（48%）；剩下的人名称呼行从 882 掉到 76。
+  写入 1,561 行、拒收 1,439 行（48%，**下界**——预演没先回填历史词面）；剩下的人名称呼行从 882 掉到 76。
 - 剩下的 C2 分母是 0（`carried=0`），所以它的"零缺陷"是**空真**——门槛这一项在这一版
-  规则下没有分母。A 与 C1 不是空真：A refs 4,534 全清、C1 577/577 记明。
+  规则下没有分母。判官已按这个事实改：分母为 0 的项一律退出 2（不能确立），所以那个
+  预演库的普查现在退出 2，不是 0。A 与 C1 不是空真：A refs 4,534 全清、C1 577/577 记明。
 - 复算：`python3 scripts/rehearse_writes.py --db /tmp/slice.db --out /tmp/rehearse.db &&
   python3 scripts/d1_census.py --db /tmp/rehearse.db`。
 

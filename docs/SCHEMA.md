@@ -159,6 +159,8 @@ labels 是独立命名空间，独占该表，与 observations / messages / expr
   静默沿用才是。拒绝的计数在 `stats.epithet_refused` 与日志里，所以 `payload.epithet_refused`
   现在不会出现（判官里的那个分支因此恒为 0，不是缺陷）。
   首次出现的称呼不算沿用：它只可能来自本帧，要求它点名等于要求模型说废话（前提是本轮有帧）。
+  **分母为 0 就是不能确立**：若 C1 一行都没命中、或 C2 没有一条被沿用的称呼，项没有行可判，
+  普查退出 2（空真不是通过）。
 - 它与 A/B 正交——B 全过仍可能依据落在上一条消息的帧里，而 C 全过也不替 B 证明内容为真。
   C 的阈值住 [ROADMAP.md](ROADMAP.md)，分子分母、判定人口与命令住本节末尾。
 
@@ -169,7 +171,7 @@ labels 是独立命名空间，独占该表，与 observations / messages / expr
 ```sh
 python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db \
     --since-msg-id <冻结快照的 max small id> --json .tmp/d1.json
-# 退出码：0 判定人口无缺陷 / 1 有缺陷 / 2 判定人口为空或库不可读
+# 退出码：0 判定人口无缺陷 / 1 有缺陷 / 2 判定人口为空、C1 或 C2 的分母为 0（空真）、库不可读
 ```
 
 **D1 语义回指率（M0′）**：D1 抽样范围固定为 small 行，不因 big 回指现状而变。从 messages 的 small 行抽样 200 条语义记录。程序：按 obs_ids 解析到 observations。判定 A＝id 存在且其 ts_wall 落在该消息 [ts_start, ts_end] 内；判定 B＝该观察的字段（key/content/ref/meta）确实支持该行的语义断言，由独立评审对 50 条抽样判定。通过＝A 达 100% 且 B ≥95%。

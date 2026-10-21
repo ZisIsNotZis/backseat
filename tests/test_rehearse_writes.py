@@ -169,6 +169,15 @@ def section_bad_inputs() -> None:
         check(st["missing_refs"] == 1 and st["missing_refs_all"] == 1,
               f"引用丢失的行要单独计数：{st['missing_refs']}/{st['missing_refs_all']}")
         check(st["written"] == 3, f"坏输入不能把行吞掉：written={st['written']}")
+        # 切片：--limit 只重放前 N 行（报告里的切片数字要能从快照一条命令复现）
+        out2 = StoreStub(Path(td) / "out2.db")
+        con2 = rehearse_writes.connect_ro(str(snap))
+        st2 = rehearse_writes.rehearse(con2, out2, limit=2)
+        con2.close()
+        check(st2["rows_in"] == 2 and st2["written"] == 2,
+              f"--limit 2 只该重放两行：{st2['rows_in']}/{st2['written']}")
+        check(rows_of(out2) == rows_of(out, "id<=2"), "切片前两行应与全量前两行逐字段相同")
+        out2.close()
         lens = rows_of(out, "obs_ids='[]'")
         check(len(lens) == 1, f"空引用的行应照写进预演库：{lens}")
         print(f"bad inputs OK: 3 行进、{st['written']} 行出，空引用 1、引用丢失 1 各自计数")

@@ -62,7 +62,8 @@ python3 -c "import json;a,b=(json.load(open(p)) for p in ('.tmp/e1.json','.tmp/e
 python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db \
     --since-msg-id <冻结快照的 max small id>          # D1 A/C 普查（只读）：0 无缺陷 / 1 有缺陷 / 2 判定人口为空＝不能确立
 # 预演：拿冻结快照的 small 正文、用现在的写入规则重写进临时库，再对它普查（不发模型请求）
-python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --out /tmp/rehearse.db
+python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --out /tmp/rehearse.db          # 全量
+python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --out /tmp/rehearse.db --limit 3000  # 切片，报告里的数字用它复算
 python3 scripts/d1_census.py --db /tmp/rehearse.db    # 预演库每行都是新规则写的，故不带 --since-msg-id
 grep -c "整行拒收" ~/backseat-data/run.log          # 沿用称呼没点名 → 整行没落库；这个数是 C2 归零的价钱
 sqlite3 -readonly ~/backseat-data/backseat.db \
@@ -72,7 +73,7 @@ sqlite3 -readonly ~/backseat-data/backseat.db \
 健康标准：`witness_cursor == count(observations)`（无积压）；`抓帧失败` 不持续增长；
 `run.log` 无重复错误刷屏（同类错误 5 分钟最多一条）。称呼机制的模型侧读数只看一个计数：
 `run.log` 里 `整行拒收` 的行数 / 该时段写入的 small 行数——模型没在 `cast` 里点名本轮某张图的行，
-整行不落库（正文不改写）。轨迹里 2,163 次见证调用 0 次带 `cast`，所以这个数现在会很大；
+整行不落库（正文不改写）。轨迹里见证调用 24,553 次、带 `cast` 的 0 次（`grep -h -o '"purpose": "witness[^"]*"' ~/backseat-data/trajectory/*.jsonl | wc -l`），所以这个数现在会很大；
 它高是提示词没教会 `cast`，提词器是杠杆，规则只看依据在不在行内。
 
 ## 生产判定人口（M0′ 的一次实跑）
@@ -88,7 +89,7 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backsea
 ```
 
 回填不能省：C2 的“沿用”是跨全库比的，不回填的话修复后第一次重写历史里的名字就不在册里，写出去就是静默沿用。
-代价是这些行被整行拒收（模型从不在 `cast` 里点名——轨迹里 2,163 次见证调用 0 次带 cast），预演切片上约占一半；这是 C2 归零的价钱，不是副作用。
+代价是这些行被整行拒收（模型从不在 `cast` 里点名——轨迹里 24,553 次见证调用 0 次带 cast），预演切片上约占一半（**是下界**：预演的册子从空表起，没先回填历史词面，所以历史名字在预演里被当成“首次出现”放行；先回填的话那批行也会被拒）；这是 C2 归零的价钱，不是副作用。
 
 `--since-msg-id` 一律取**旧**冻结快照的 max small id（当前 25,900），不要换成"今天"：它划的是修复前后的缝，不是日期。判定人口非空之前退出码是 2（不能确立），不是通过。
 

@@ -304,7 +304,7 @@ class Witness:
             return
         self.store.conn.executemany(
             f"INSERT INTO {EPITHET_TABLE}(form,first_wall,last_wall) VALUES(?,?,?) "
-            "ON CONFLICT(form) DO UPDATE SET last_wall=excluded.last_wall",
+            "ON CONFLICT(form) DO UPDATE SET last_wall=MAX(last_wall, excluded.last_wall)",
             [(f, wall, wall) for f in forms])
         self.store.conn.commit()
 
@@ -314,7 +314,7 @@ class Witness:
 
         `浅色外套男子` 这类站立描述只允许来自本行引用的帧。能留下的情形只有两种：
         cast 里点名了本轮第 n 张图（1≤n≤本轮图数）；册里没有这个词面（本轮首次出现，
-        故它只可能来自本帧）。首次出现放行的提前是**本轮至少有一张图**：n_frames=0 时
+        故它只可能来自本帧）。首次出现放行的前提是**本轮至少有一张图**：n_frames=0 时
         任何词面都没有依据（点名也验不了），整行拒收——这不是首次出现的例外。
 
         册里记过的词面而本行又写出来的，本模块无从复核像素，所以拒绝而不是静默沿用。

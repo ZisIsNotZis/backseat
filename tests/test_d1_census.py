@@ -108,6 +108,17 @@ def main() -> None:
     s1 = d1_census.sample(d1_census.connect(str(db)), 3, 3371)
     s2 = d1_census.sample(d1_census.connect(str(db)), 3, 3371)
     check(s1["rows"] == s2["rows"], "同 seed 抽样必须可复现")
+    # 分母为 0 的项是空真：没有沿用行可判，C2 的 0 不是通过 → 退出 2
+    noc = tmp / "nocarry.db"
+    build(noc)
+    con3 = sqlite3.connect(str(noc))
+    # 只留"首次出现"的称呼行（id 1）与不含称呼的行：C2 的分母（沿用）变成 0
+    con3.execute("DELETE FROM messages WHERE id IN (2,3,4,5,6,7,8)")
+    con3.commit()
+    con3.close()
+    check(d1_census.main(["--db", str(noc), "--since-msg-id", "0"]) == 2,
+          "C2 分母为 0 时必须退出 2（空真不是通过）")
+
     # 库不存在 → 退出 2
     check(d1_census.main(["--db", str(tmp / "nope.db")]) == 2, "库不可读必须退出 2")
 

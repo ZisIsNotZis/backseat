@@ -25,7 +25,7 @@
 
 用法：
   python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db \
-      --out /tmp/rehearse-$(git rev-parse --short HEAD).db
+      --out /tmp/rehearse-$(git rev-parse --short HEAD).db [--limit 3000]
   python3 scripts/d1_census.py --db /tmp/rehearse-<sha>.db
 """
 
@@ -125,7 +125,8 @@ def mini_of(row) -> dict:
     return mini
 
 
-def rehearse(snap: sqlite3.Connection, out: Store, log=None) -> dict:
+def rehearse(snap: sqlite3.Connection, out: Store, log=None,
+             limit: int | None = None) -> dict:
     """把快照的 small 正文按现在的写入规则重算证据基，写进 `out`。返回计数。"""
     walls = {r["id"]: r["ts_wall"]
              for r in snap.execute("SELECT id, ts_wall FROM observations")}
@@ -135,11 +136,12 @@ def rehearse(snap: sqlite3.Connection, out: Store, log=None) -> dict:
 
     w = Witness(out, NoModel(), NoTrajectory(), Config(),
                 log=log or (lambda *a: None))
-    rows = snap.execute(
-        "SELECT id, ts_start, ts_end, content, intent, type, model, payload, obs_ids "
-        "FROM messages WHERE level='small' ORDER BY id").fetchall()
+    sql = ("SELECT id, ts_start, ts_end, content, intent, type, model, payload, obs_ids "
+           "FROM messages WHERE level='small' ORDER BY id")
+    rows = snap.execute(sql + (" LIMIT ?" if limit else ""),
+                        (limit,) if limit else ()).fetchall()
 
-    st = {"rows_in": 0, "written": 0, "dropped_empty": 0, "empty_obs_ids": 0,
+    st = {"limit": limit or 0, "rows_in": 0, "written": 0, "dropped_empty": 0, "empty_obs_ids": 0,
           "missing_refs": 0, "missing_refs_all": 0, "marker_rows": 0, "switch_base": 0,
           "obs_len_in": [], "obs_len_out": [], "dropped_ids": []}
     for row in rows:
@@ -178,7 +180,7 @@ def rehearse(snap: sqlite3.Connection, out: Store, log=None) -> dict:
 
 
 def report(st: dict, db: str, out: str) -> None:
-    print(f"snapshot={db} out={out}")
+    print(f"snapshot={db} out={out} limit={st['limit'] or '全员'}")
     print(f"rows_in={st['rows_in']} written={st['written']} dropped_empty={st['dropped_empty']}")
     print(f"empty_obs_ids_rows={st['empty_obs_ids']} missing_ref_rows={st['missing_refs']} "
           f"(all_cited_evicted={st['missing_refs_all']})")
@@ -200,6 +202,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="写入规则预演（只读快照，写临时库）")
     ap.add_argument("--db", required=True, help="冻结快照路径（只读打开）")
     ap.add_argument("--out", required=True, help="预演库路径（会被重建）")
+    ap.add_argument("--limit", type=int, default=None,
+                    help="只重放前 N 条 small 行（切片；默认全体）：报告里的数字要能从快照一条命令复现")
     ap.add_argument("--verbose", action="store_true", help="把规则拒绝逐条打到 stderr")
     args = ap.parse_args(argv)
 
@@ -217,7 +221,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     out = Store(out_path)
-    st = rehearse(snap, out, log=(print if args.verbose else (lambda *a: None)))
+    st = rehearse(snap, out, log=(print if args.verbose else (lambda *a: None)),
+                  limit=args.limit)
     out.close()
     report(st, args.db, str(out_path))
     return 0

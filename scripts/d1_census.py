@@ -22,7 +22,8 @@
   python3 scripts/d1_census.py --db … --since-msg-id 24551 --json .tmp/d1.json
   python3 scripts/d1_census.py --db … --sample 50 --seed 3371
 
-退出码：0 判定人口无缺陷；1 判定人口有缺陷；2 判定人口为空 / 库不可读 / 参数误用。
+退出码：0 判定人口无缺陷；1 判定人口有缺陷；2 判定人口为空、C1/C2 的分母为 0（空真）、
+库不可读或参数误用。
 """
 
 from __future__ import annotations
@@ -263,6 +264,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if rep["judged_rows"] == 0:
         print("判定人口为空：不能确立（不是通过）")
+        return 2
+    # 分母为 0 的项是空真：没有行可判，不等于没有缺陷（缺值记不能确立，不记 0）。
+    judged_c = rep["judged"]["C"]
+    empty = []
+    if judged_c["c1_rows"] == 0:
+        empty.append("C1（没有命中对比/过渡词面的行）")
+    if judged_c["c2_carried"] == 0:
+        empty.append("C2（没有被沿用的通行称呼）")
+    if empty:
+        print("判定人口里这些项的分母为 0，不能确立（不是通过）：" + "；".join(empty))
         return 2
     if defects:
         print(f"判定人口缺陷行 {len(defects)}：{defects[:20]}{' …' if len(defects) > 20 else ''}")

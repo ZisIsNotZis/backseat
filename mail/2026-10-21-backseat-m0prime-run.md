@@ -22,8 +22,9 @@ command（两条就够看状态，不必开我的目录）:
 
 预演替你把"那一次实跑会得到什么"先算了一遍（同样的模型内容、现在的写入规则、不发模型请求）：
 
-    python3 scripts/rehearse_writes.py --db /tmp/slice.db --out /tmp/rehearse.db && python3 scripts/d1_census.py --db /tmp/rehearse.db
-    → A refs=4534 坏 0 出窗 0 倒置 0；C1 577/577 记明；C2 silent=0；退出 0
+    python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/2026-10-19/backseat.db --out /tmp/rehearse.db --limit 3000
+    python3 scripts/d1_census.py --db /tmp/rehearse.db
+    → A refs=4534 坏 0 出窗 0 倒置 0；C1 577/577 记明；C2 silent=0 **但分母为 0**；退出 2（不能确立）
 
 decision 要 root 给的（一条）：授权这次实跑，或者明确说不授权。
 
@@ -33,10 +34,12 @@ decision 要 root 给的（一条）：授权这次实跑，或者明确说不�
   入选 5,791 帧 / 17.4 小时＝333 行/小时），然后 `python3 scripts/freeze_snapshot.py` 与上面那条普查。前提是 shell 里有 `LITELLM_BASE_URL` 与 `LITELLM_API_KEY`（这台机器的环境里已经有了；守护进程从启动它的 shell 继承）。花的是 `gpt-6-luna` 的月配额（10 月还剩 10 天），每帧约 265 out-token，
   一次实跑是几万 token 的量级，不是按量计费的钱。
 - 不授权就写"不授权"：M0′ 停在门口，我不会自己开。我不替你判断，因为付配额的不是我。
-- 一条更正：`mail/2026-10-21-backseat-proxy.md` 的前提过期了。`127.0.0.1:4000` 由用户的
-  systemd 服务自 **2026-10-19 20:36** 起一直在跑（`ss -ltnp` 命中 litellm；带 key 的
-  `/v1/models` 返回 200）；`run.log` 里那句 `Connection refused` 是 10-19 06:44，早于服务
-  启动 13 个半小时。那封信问"起代理"，真正缺的是"跑一次"——建议撤信，换一句话问配额。
+- 一条更正：`mail/2026-10-21-backseat-proxy.md` 的前提过期了。`127.0.0.1:4000` 上有个 litellm
+  进程自 **2026-10-19 20:36:49** 起一直在听（`ps -o lstart,cmd -p 1056812`；它不是 systemd
+  服务单元，是终端里起的，`cat /proc/1056812/cgroup` 是临时 scope），带 key 的 `/v1/models`
+  返回 200（`curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4000/v1/models -H
+  "Authorization: Bearer $LITELLM_API_KEY"`）；`run.log` 里那句 `Connection refused` 是
+  10-19 06:44，早于进程启动 13 个半小时。那封信问"起代理"，真正缺的是"跑一次"——建议撤信。
 
 ## 这一轮改了什么（`backseat/` 内本地提交，未推送；清单见 `git log 452f812~1..HEAD`）
 
@@ -61,7 +64,8 @@ decision 要 root 给的（一条）：授权这次实跑，或者明确说不�
 ## 代价（要你知道，不是要你决定）
 
 整行拒收的价钱：预演切片 3,000 行里 1,439 行（48%）不落库，因为模型**从不**在 `cast` 里
-点名（轨迹里 2,163 次见证调用，0 次带 cast）。这是 C2 归零的价钱，不是副作用；`run.log`
+点名（轨迹里见证调用 24,553 次、带 `cast` 的 0 次）。48% 是**下界**：预演的册子从空表起、
+没先回填历史词面，真跑会先回填（历史名字因此也会被拒），丢弃只会更多。这是 C2 归零的价钱，不是副作用；`run.log`
 里 `整行拒收` 的行数就是它。要不要换个付法（改提词器、禁止给人物起称呼）见同目录的
 `2026-10-21-backseat-c2-cost.md`（kind: direction，要 taste）。
 
