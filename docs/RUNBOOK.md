@@ -91,6 +91,22 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backsea
 回填不能省：C2 的“沿用”是跨全库比的，不回填的话修复后第一次重写历史里的名字就不在册里，写出去就是静默沿用。
 代价是这些行被整行拒收（模型从不在 `cast` 里点名——轨迹里 24,553 次见证调用 0 次带 cast），预演切片上约占一半（**是下界**：预演的册子从空表起，没先回填历史词面，所以历史名字在预演里被当成“首次出现”放行；先回填的话那批行也会被拒）；这是 C2 归零的价钱，不是副作用。
 
+### 已经跑过的一次（2026-10-21 22:23:34–22:36:54，有界 13 分 20 秒）
+
+配置：`display=":99"`（Xvfb 合成源）、`model="deepseek/deepseek-flash"`、`sample_high=6.0`、`batch_max=1`、`digest_min=30`；其余同 `config.toml`。启动是 dev-up.sh 的两条帧源命令 + `python3 -m backseat --data-dir ~/backseat-data --config <那份临时配置>`，停止是 `./scripts/dev-down.sh` 然后 `freeze_snapshot.py`。
+
+读数（都能从快照、`run.log`、`trajectory/2026-10-21.jsonl` 复算）：
+
+| 读什么 | 怎么算 | 值 |
+|---|---|---|
+| 落库 small 行 | `SELECT count(*) FROM messages WHERE id>25900` | 8（7 diff + 1 anchor） |
+| 入选帧 / 采样 | `run.log` 末行统计 | 39 / 124 |
+| 整行拒收 | `grep -c 整行拒收 ~/backseat-data/run.log` | 24（其中 22 次丢弃 1 帧） |
+| 见证调用与花销 | `trajectory/2026-10-21.jsonl` 的 usage 求和 | 32 次、285,239 in（209,024 走缓存）/ 10,999 out = $0.037 |
+| 游标积压 | `observations` 42,436 − `witness_cursor` 42,436 | 0 |
+
+判据是“24 次拒收 : 8 行落库”，即约 3:1；32 次见证调用里只有 1 行带 `cast`——**拒收率高在提示词不在规则**，和这条规则要的“依据在不在行内”无关。≥200 行、B 抽样与拒收率的正式读数还是空的。
+
 `--since-msg-id` 一律取**旧**冻结快照的 max small id（当前 25,900），不要换成"今天"：它划的是修复前后的缝，不是日期。判定人口非空之前退出码是 2（不能确立），不是通过。
 
 ## 数据与日志位置
@@ -108,7 +124,8 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backsea
 
 | 模型 | 状态 |
 |---|---|
-| `github_copilot/gpt-6-luna` | **当前选用**：约 8s/批调用、265 tok/帧；月配额，每月 1 日重置 |
+| `github_copilot/gpt-6-luna` | **产品选用**（config.toml 的 `model`）：约 8s/批调用、265 tok/帧；月配额，每月 1 日重置 |
+| `deepseek/deepseek-flash` | **实跑用的便宜运行时模型**：视觉可用（图走 `image_url` data URL）、2.97s/批（32 次调用中位数，max 5.1s）、8987 tok in / 378 tok out 每批；按量：$0.30/M in、$1.20/M out、$0.006/M cache-read（价格源 `curl /model/info`），一次 13 分钟的实跑合计 $0.037 |
 | `volcengine/glm-5.3-flash` | 备用：可用但慢（~104s/批）且**周配额 + 5 小时滚动配额**双限制 |
 | `zai-coding/glm-5.3-flash` | 用户 Coding Plan；需 litellm yml 里 `api_base: https://open.bigmodel.cn/api/coding/paas/v4`（按量端点会报余额不足） |
 | `siemens/*`、`github_copilot/claude-*` | 路由不可用 |
