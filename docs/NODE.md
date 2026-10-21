@@ -13,7 +13,7 @@
 工作包（报告只发给本节点，不发给上一层）：
 
 1. **[已完] D1 普查尺子** —— `scripts/d1_census.py` + `tests/test_d1_census.py`：把 A、C1、C2 的分子分母、判定人口与退出码变成一条只读命令。判定程序住 [SCHEMA.md](SCHEMA.md#门槛判定程序)。
-2. **[本次派出] BS-M0P-封口** —— `idle-compute`，wall-clock 60 分钟，写入面 `backseat/witness.py` + `tests/test_witness_basis.py`：把对比/过渡词面从 `从…切至` 放宽到评审数到的族；称呼记忆从"只记上一行"改成累计（跨行沿用也能拒）；把保留下来的点名记进 `payload.cast`，使 C2 可事后判。见 `mail/`（派出后落到本项目 `mail/`）。
+2. **[本次派出] BS-M0P-封口** —— `idle-compute`，wall-clock 60 分钟，写入面 `backseat/witness.py` + `tests/test_witness_basis.py`：把对比/过渡词面从 `从…切至` 放宽到评审数到的族；称呼记忆从"只记上一行"改成累计（跨行沿用也能拒）；把保留下来的点名记进 `payload.cast`，使 C2 可事后判。已派出（run `a16ee5ba`），报告落到本项目 `mail/`；下一次会话先读 `mail/`，把它落地再谈门槛。
 3. **[已完] 门槛改写与文档落地** —— `docs/ROADMAP.md` 的 M0′ 门槛行与判定人口、`docs/SCHEMA.md` 的 D1 C 与 labels 一行、`docs/RUNBOOK.md` 的两条读数。
 4. **[等端点] 实跑 → 新快照 → 普查 + B 抽样** —— 依赖 `127.0.0.1:4000` 的模型端点（用户在手上）。判定人口非空之后才谈得上通过；在此之前 A/C 是"不能确立"，不是通过也没有失败。
 
@@ -32,4 +32,5 @@
 - 普查：`python3 scripts/d1_census.py --db ~/backseat-data/snapshots/2026-10-19/backseat.db` → A：引用 27,012、坏 id 0、出窗 232、出窗行 104、倒置 12；C1：命中 10,206、记明 0；C2：含称呼 21,867、沿用 21,737（相邻 10,408 / 跨行 20,176）、点名 0。
 - 独立评审（D1 B）：`.scratch/d1-b-independent/review.md`（48/50，零余量；42/50 与 17/50 的敏感度；两个失败行 msg 620、msg 1946）。
 - 测试：`python3 tests/test_d1_census.py`；`python3 tests/test_witness_basis.py`；`docs/RUNBOOK.md` 验证节的一行循环（13 个文件）。
-- 上一层给本节点的信：`mail/`（读后落地即删，无残留）。
+- 上一层给本节点的信：已全部落地并删除（无残留）；本节点给上一层的报告在 `/home/z/vibe/mail/2026-10-21-backseat-owner.md`（workspace 仓库 `79d9b1f`）。
+- 冻结快照的 `max small id = 25900`：新快照的判定人口就是 `--since-msg-id 25900` 之后的行。
