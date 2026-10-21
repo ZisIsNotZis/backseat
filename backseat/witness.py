@@ -309,10 +309,11 @@ class Witness:
         返回 (content|None, obs_ids, ts_start, ts_end, 基帧, 被拒称呼)；content 为 None
         表示整行拒绝（只剩被拒称呼与计数），调用方丢弃本行。
         """
+        raw = content  # 切换句按模型写下的原话判：称呼被删掉也不该让过渡句消失
         content, refused = self._settle_epithets(content, mini, n_frames)
         if content is None:
             return None, [], ref_wall, ref_wall, [], refused
-        base = self._switch_base(mini, content, ref_wall)
+        base = self._switch_base(mini, raw, ref_wall)
         ids = list(dict.fromkeys([*frame_ids, *base]))
         ts_start, ts_end = self._window_of(ids, ref_wall)
         return content, ids, ts_start, ts_end, base, refused
