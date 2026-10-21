@@ -11,11 +11,18 @@ b) `从X切至Y` 切换句把被切离端并进本行 obs_ids：本轮帧 + 基�
 c) 通行称呼只认本轮点名的图：上一行用过的称呼没点名就拒绝（正文删掉、payload 记
    epithet_refused、stats 计数可见），点名图号越界同样拒绝，点名有效则保留，
    无帧可看的行一律拒绝，新称呼不被误删、被沿用后同样被拒，删空的整行不落库；
-运行：python3 tests/test_witness_basis.py [batch|switch|epithet]
-      （不带参数跑全部三节；分节是为了能在旧代码上单独跑出批窗口的红）
+d) 对比/过渡词面的闭集：表里每一族都要求基帧（`切换为`/`相较上一帧`/`仍为` 三行各得
+   一个基帧、窗口覆盖两端），表外的行不连带；旧判据（只认 `从…切至`）跑同一夹具时
+   这三行拿不到基帧——判别力不靠注释；
+e) 称呼册累计：隔一行再写的称呼仍被拒（旧册只记上一行，中间那行一提不到它就漏），
+   被拒的词面留在册里所以再写还是拒，点名才留，新称呼不被误删；
+f) 保留的点名进 `payload.cast`：点名的行有，没留下的行连键都不长；普查 C2 据此可判。
+运行：python3 tests/test_witness_basis.py [batch|switch|epithet|markers|memory|bound|cast]
+      （不带参数跑全部；分节是为了能在旧代码上单独跑出新节的红）
 """
 
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -29,6 +36,8 @@ from backseat.trajectory import Trajectory
 from backseat.witness import Witness  # 旧代码也有 Witness：批窗口一节因此在旧代码上可跑
 
 T = 1_700_000_000.0  # 固定墙钟基准：测试不依赖跑起来的时刻
+# 改动前的标记判据原文（只认 `从…切至`）：断言旧行为时用它，不用记忆里的写法。
+OLD_SWITCH_RE = re.compile(r"从[^，。；,;\s]{1,24}?切至")
 CHECKS = 0
 
 
@@ -222,7 +231,8 @@ def section_epithet() -> None:
         check(payload_of(row2).get("epithet_refused"),
               f"拒绝要留痕（payload.epithet_refused）：{payload_of(row2)}")
         check(w.stats.get("epithet_refused", 0) >= 1, f"拒绝要计数：{w.stats}")
-        check(store.get_state("epithets", []) == [], "被拒的称呼不该继续留在册里")
+        check(name in store.get_state("epithets", []),
+              "累计册：被拒的词面仍在册里，下次不点名还会被拒（只记上一行的旧册这里会是空）")
 
         r3 = w.process(obs_row(store, o3))
         row3 = store.conn.execute("SELECT * FROM messages WHERE id=?", (r3,)).fetchone()
@@ -237,6 +247,7 @@ def section_epithet() -> None:
         check(name not in row4["content"], f"越界图号等于没点名：{row4['content']!r}")
         check(payload_of(row4).get("epithet_refused"),
               f"越界拒绝也要留痕：{payload_of(row4)}")
+        check("cast" not in payload_of(row4), f"没留下的点名不该长 cast 键：{payload_of(row4)}")
 
         # 5) 重新点名有效 → 保留，称呼回册
         w.model.outputs.append(diff(f"{name}看着屏幕", cast=[{"name": name, "frame": 1}]))
@@ -286,9 +297,213 @@ def section_epithet() -> None:
         store.close()
 
 
+# —— d) 对比/过渡词面的闭集：表里的族要基帧，表外不要 ——
+# 评审在 50 行里数到的族，逐条词面一行；`从…切至` 是旧判据已经认得的那个，其余都是新收的。
+MARKER_TEXTS = (
+    ("从终端切至浏览器", "从…切至"),
+    ("由终端切至浏览器", "由…切至"),
+    ("由终端切为浏览器", "由…切为"),
+    ("由终端切换为浏览器", "由…切换为"),
+    ("从终端切为浏览器", "从…切为"),
+    ("从终端切换为浏览器", "从…切换为"),
+    ("画面切至浏览器", "画面切至"),
+    ("镜头切至浏览器", "镜头切至"),
+    ("切至浏览器", "切至"),
+    ("切换为浏览器", "切换为"),
+    ("相较上一帧，页面变亮", "相较上一帧"),
+    ("相较前帧，页面变亮", "相较前帧"),
+    ("相较早先的画面，页面变亮", "相较"),
+    ("仍为同一个终端", "仍为"),
+    ("仍是同一个终端", "仍是"),
+    ("仍保持同一布局", "仍保持"),
+    ("与此前不同", "与此前…不同"),
+    ("与此前的布局不同", "与此前…不同"),
+    ("相对上一张图更亮", "相对上一…"),
+)
+
+
+def section_markers() -> None:
+    """`切换为`/`相较上一帧`/`仍为` 的三行各得一个基帧，无对比句的行不连带。"""
+    from backseat.witness import SWITCH_RE
+
+    # 闭集：表里的族逐条命中，表外一行不命中（放宽不等于“什么都算对比句”）
+    missed = [fam for text, fam in MARKER_TEXTS if not SWITCH_RE.search(text)]
+    check(not missed, f"标记表应认全部计数到的族，漏了：{missed}")
+    for text in ("把窗口切到右边", "终端里多了一行警告", "终端在跑测试脚本"):
+        check(SWITCH_RE.search(text) is None, f"表外的写法不要求基帧：{text!r}")
+    # 旧判据在同一张表上的命中：只有 `从…切至` 这一族，其余全漏
+    old_hits = [fam for text, fam in MARKER_TEXTS if OLD_SWITCH_RE.search(text)]
+    check(old_hits == ["从…切至"], f"旧判据只认 从…切至：{old_hits}")
+
+    with tempfile.TemporaryDirectory() as td:
+        store = Store(Path(td) / "markers.db")
+        frame = jpeg(Path(td) / "frame.jpg")
+        ids = [mk_obs(store, T + i * 10, frame) for i in range(5)]
+        marked = [("切换为浏览器，MDN 的 flex 章节", "切换为"),
+                  ("相较上一帧，页面滚到报错那一行", "相较上一帧"),
+                  ("仍为同一个编辑器窗口", "仍为")]
+        w, _model = make_witness(store, td, [
+            anchor("终端在跑测试脚本"),
+            *(diff(text) for text, _ in marked),
+            diff("终端里多了一行警告"),
+        ])
+        got = [w.process(obs_row(store, oid)) for oid in ids]
+        check(all(x is not None for x in got), f"五行都应落库：{got}")
+
+        prev_ids = [ids[0]]
+        for i, (text, fam) in enumerate(marked, start=1):
+            row = store.conn.execute("SELECT * FROM messages WHERE id=?", (got[i],)).fetchone()
+            cited = json.loads(row["obs_ids"])
+            own = ids[i]
+            check(cited[0] == own and set(prev_ids) <= set(cited),
+                  f"{fam} 行应把上一行的帧并进来：{cited} vs 上一行 {prev_ids}")
+            check(payload_of(row).get("switch_base") == prev_ids,
+                  f"{fam} 行应记明基帧：{payload_of(row)} vs {prev_ids}")
+            check(row["ts_start"] == min(wall_of(store, x) for x in cited),
+                  f"{fam} 行的窗口应覆盖基帧：{row['ts_start']} vs {cited}")
+            # 旧行为，同夹具：旧判据在这句上返回空基帧，所以旧代码写下的只能是本轮那一帧
+            check(OLD_SWITCH_RE.search(text) is None,
+                  f"{fam} 不是旧判据的族（夹具应让旧代码在这行丢基帧）：{text!r}")
+            check(cited != [own], f"{fam}：旧代码的 obs_ids 就是 {[own]}")
+            prev_ids = cited
+
+        plain = store.conn.execute("SELECT * FROM messages WHERE id=?", (got[4],)).fetchone()
+        check(json.loads(plain["obs_ids"]) == [ids[4]],
+              f"表外的行不该连带基帧：{json.loads(plain['obs_ids'])}")
+        check("switch_base" not in payload_of(plain), f"无对比句就不该记基帧：{payload_of(plain)}")
+        print("markers OK: 切换为/相较上一帧/仍为 各得基帧，表外不连带；"
+              f"旧判据在 {len(MARKER_TEXTS)} 条词面里只认 1 条")
+        store.close()
+
+
+# —— e) 称呼册累计：隔着行也拦得住 ——
+def section_epithet_memory() -> None:
+    """隔一行再写的称呼仍被拒；中间那行不提它，册子不因此清空。"""
+    from backseat.witness import epithet_forms
+    with tempfile.TemporaryDirectory() as td:
+        store = Store(Path(td) / "memory.db")
+        frame = jpeg(Path(td) / "frame.jpg")
+        o = [mk_obs(store, T + i * 10, frame) for i in range(6)]
+        name = "浅色外套男子"
+        w, _model = make_witness(store, td, [
+            anchor(f"{name}在蓝砖拱廊下跳街舞", cast=[{"name": name, "frame": 1}]),  # 入册
+            diff("终端里只剩一行报错"),               # 中间一行不提它：旧册在这里被清空
+            diff(f"{name}仍在原地"),                    # 隔一行沿用、没点名 → 拒
+            diff(f"{name}还在原地"),                    # 再写一次 → 还拒（拒过的词面仍在册里）
+            diff(f"{name}向前一步", cast=[{"name": name, "frame": 1}]),  # 点名 → 留
+            diff("花衣男子站在柜台前"),                 # 新称呼：不误删
+        ])
+        rows, mem = {}, {}
+        for i, oid in enumerate(o):
+            mid = w.process(obs_row(store, oid))
+            rows[i] = store.conn.execute("SELECT * FROM messages WHERE id=?", (mid,)).fetchone()
+            mem[i] = store.get_state("epithets", [])
+
+        check(name in mem[0], f"首行点名有效的称呼应入册：{mem[0]}")
+        # 旧行为，同夹具：中间这一行没有任何称呼，所以“只记上一行”的册子在这里是空的
+        check(epithet_forms(rows[1]["content"]) == [],
+              f"夹具应让中间行的称呼集为空：{rows[1]['content']!r}")
+        check(name in mem[1],
+              f"累计册：中间行不提它也不该把它忘掉（旧册在这里是空）：{mem[1]}")
+
+        check(name not in rows[2]["content"],
+              f"隔一行沿用、没点名 → 拒：{rows[2]['content']!r}")
+        check(payload_of(rows[2]).get("epithet_refused"),
+              f"拒绝要留痕：{payload_of(rows[2])}")
+        check(name not in rows[3]["content"],
+              f"拒过的词面仍在册里，再写一次还是拒：{rows[3]['content']!r}")
+        check(name in store.get_state("epithets", []),
+              "点名之前册子不该把它丢掉（它还是上一次看到的那个称呼）")
+        check(name in rows[4]["content"], f"点名有效就留下：{rows[4]['content']!r}")
+        check(payload_of(rows[4]).get("cast") == [{"name": name, "frame": 1}],
+              f"点名有效的行应记明点的是哪一帧：{payload_of(rows[4])}")
+
+        check("花衣男子" in rows[5]["content"], f"新称呼不该被误删：{rows[5]['content']!r}")
+        check("花衣男子" in store.get_state("epithets", []), "新称呼应入册")
+        check("cast" not in payload_of(rows[5]),
+              f"没点名的行不该长 cast 键：{payload_of(rows[5])}")
+        print(f"epithet memory OK: 隔一行沿用仍被拒（正文 {rows[2]['content']!r}），"
+              f"再写仍拒，点名才留，新称呼不误删")
+        store.close()
+
+
+# —— e2) 册子有界：封顶之后先忘最久没用过的 ——
+def section_epithet_bound() -> None:
+    """册住 state 里跟着库活很久，因此必须有界；`EPITHET_MEMORY` 是那个界。"""
+    from backseat.witness import EPITHET_MEMORY
+
+    with tempfile.TemporaryDirectory() as td:
+        store = Store(Path(td) / "bound.db")
+        frame = jpeg(Path(td) / "frame.jpg")
+        oid = mk_obs(store, T, frame)
+        # 预填满册（每个词面都是真称呼的形状，且与本节正文无重叠）
+        old = [chr(0x4E00 + i) + chr(0x5200 + i) + "男子" for i in range(EPITHET_MEMORY)]
+        store.set_state("epithets", old)
+        w, _model = make_witness(store, td, [diff("黄衣男子站在门口")])
+        w.process(obs_row(store, oid))
+        mem = store.get_state("epithets", [])
+        check(len(mem) == EPITHET_MEMORY,
+              f"册应封顶在 {EPITHET_MEMORY} 个词面：{len(mem)}")
+        check(old[0] not in mem, "超出上限先忘最久没用过的那个")
+        check(mem[-1] == "黄衣男子", f"本行用到的词面应在最末（最近使用）：{mem[-3:]}")
+        print(f"epithet bound OK: 预填 {len(old)} 个后只留 {len(mem)}，最久没用的被忘掉")
+        store.close()
+
+
+# —— f) 保留的点名进 payload.cast：C2 事后可判 ——
+def section_cast_record() -> None:
+    """留下来的点名记进 `payload.cast`；没留下来的行连键都不长。"""
+    with tempfile.TemporaryDirectory() as td:
+        store = Store(Path(td) / "cast.db")
+        frame = jpeg(Path(td) / "frame.jpg")
+        o = [mk_obs(store, T + i * 10, frame) for i in range(5)]
+        name = "浅色外套男子"
+        w, _model = make_witness(store, td, [
+            anchor(f"{name}在蓝砖拱廊下跳街舞", cast=[{"name": name, "frame": 1}]),  # 点名有效
+            diff(f"{name}仍在原地"),                                   # 沿用、没点名 → 拒
+            diff(f"{name}向前一步", cast=[{"name": name, "frame": 1}]),  # 点名有效
+            diff("画面里多了一张空椅子", cast=[{"name": name, "frame": 1}]),  # 点了名但没写进正文
+            diff(f"{name}又出现在右侧", cast=[{"name": name, "frame": 3}]),  # 图号越界
+        ])
+        rows = {}
+        for i, oid in enumerate(o):
+            mid = w.process(obs_row(store, oid))
+            rows[i] = store.conn.execute("SELECT * FROM messages WHERE id=?", (mid,)).fetchone()
+
+        check(payload_of(rows[0]).get("cast") == [{"name": name, "frame": 1}],
+              f"保留的点名应原样记下：{payload_of(rows[0])}")
+        check(name not in rows[1]["content"], f"没点名的沿用仍被拒：{rows[1]['content']!r}")
+        check("cast" not in payload_of(rows[1]),
+              f"被拒的行不该长 cast 键：{payload_of(rows[1])}")
+        check(payload_of(rows[2]).get("cast") == [{"name": name, "frame": 1}],
+              f"点名有效的行应记明点的是哪一帧：{payload_of(rows[2])}")
+        check("cast" not in payload_of(rows[3]),
+              f"点了名但名字没留下 → 没有保留的点名，不长 cast 键：{payload_of(rows[3])}")
+        check("cast" not in payload_of(rows[4]),
+              f"图号越界不算点名：{payload_of(rows[4])}")
+
+        # 尺子读得到它：C2 的分母是“被沿用的称呼”，分子是带 cast 的那些（0 静默沿用）
+        sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+        import d1_census
+        small = store.conn.execute(
+            "SELECT id, ts_start, ts_end, content, payload, obs_ids FROM messages "
+            "WHERE level='small' ORDER BY id").fetchall()
+        c = d1_census.census_c(small)
+        check(c["c2_carried"] == 1 and c["c2_cast"] == 1,
+              f"沿用行应恰好一行且带 cast：carried={c['c2_carried']} cast={c['c2_cast']}")
+        check(c["c2_silent"] == 0, f"写入器不该留下静默沿用：{c['c2_silent']}")
+        print(f"cast record OK: payload.cast={payload_of(rows[0])['cast']}；"
+              f"C2 carried={c['c2_carried']} cast={c['c2_cast']} silent={c['c2_silent']}")
+        store.close()
+
+
 SECTIONS = {"batch": section_batch_window,
             "switch": section_switch_base,
-            "epithet": section_epithet}
+            "epithet": section_epithet,
+            "markers": section_markers,
+            "memory": section_epithet_memory,
+            "bound": section_epithet_bound,
+            "cast": section_cast_record}
 
 
 def main(names: list[str] | None = None) -> None:

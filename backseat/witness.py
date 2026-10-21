@@ -10,8 +10,11 @@
 里找到依据，所以本模块写行时做三件事，而不是只挂本轮帧：
 1. 窗口取本行 **被引用观察** 的 min/max（不是 rows[0]/rows[-1] 的 ts_wall——id 与
    ts_wall 不同序，按 id 取的批首批尾会得到倒置窗口与落在窗外的引用）；
-2. `从X切至Y` 切换句把被切离的那一端（基帧）并进本行 obs_ids：本行自带过渡的两端；
-3. 通行称呼（`浅色外套男子`）只认本轮点名了的那张图，点不出来就拒绝，不静默沿用上一行。
+2. 对比/过渡句（`SWITCH_RE` 的闭集：`从X切至Y`、`切换为`、`相较上一帧`、`仍为`…）
+   把被比的那一端（基帧）并进本行 obs_ids：本行自带过渡的两端；
+3. 通行称呼（`浅色外套男子`）只认本轮点名了的那张图，点不出来就拒绝，不静默沿用——
+   册子累计（`state["epithets"]` 记最近 EPITHET_MEMORY 个词面），隔几行再写的称呼
+   同样被拒；保留下来的点名记进 `payload.cast`，使"这个称呼点了哪一帧"事后可判。
 """
 
 from __future__ import annotations
@@ -50,8 +53,26 @@ MEDIUM/BIG（历史纪要，历史·动词）、[KB命中行]（相关的长期�
 SMALLS（事实流水）——均由记忆引擎维护注入，不是你生成的。"""
 
 
-# 切换句：一行自称状态发生了过渡，过渡的被切离端必须同为该行的证据
-SWITCH_RE = re.compile(r"从[^，。；,;\s]{1,24}?切至")
+# 对比/过渡词面（闭集）：一行写了这些词面，就是自称"我与另一帧相比"（过渡、与前帧对照、
+# 状态延续）。被比的那一端是本行断言的基帧，必须同为该行的证据。
+#
+# 表是**封闭**的：只收独立评审在 50 行里数到的族，写死在这里而不做成可配置——词面宽一档，
+# 就多一批行欠一个端点，这要是一次看得见的选择，不是让未知词面悄悄漏过。放宽的是"哪些行
+# 欠端点"，不是"端点从哪来"：基帧仍只取点名的 since 帧、缺省上一条 small 的 obs_ids，
+# 故每行最多多一帧、窗口最多往前多一帧（代价与收益见 docs/NODE.md 的"SWITCH_RE 放宽"）。
+COMPARISON_MARKERS = (
+    # 由…切至 / 由…切为 / 从…切至 / 从…切为（原 SWITCH_RE 只认这一族里的"从…切至"）
+    ("switch", r"[由从][^，。；,;\s]{1,24}?切[至为]"),
+    # 裸切换：画面切至 / 镜头切至 / 切至 / 切换为（也收"由X切换为"：切与换为不相邻）
+    ("bare", r"画面切至|镜头切至|切至|切换为"),
+    # 帧间对照：相较上一帧 / 相较前帧 / 相较…
+    ("contrast", r"相较"),
+    # 状态延续：仍为 / 仍是 / 仍保持
+    ("still", r"仍[为是]|仍保持"),
+    # 与此前…不同 / 相对上一…
+    ("different", r"与此前[^，。；,;\s]{0,24}?不同|相对上一"),
+)
+SWITCH_RE = re.compile("|".join(p for _, p in COMPARISON_MARKERS))  # 唯一事实源：普查也读它
 # 模型回填的 since 只可能是我们自己印出来的时间格式（fmt_wall / 图N（...））
 STAMP_RE = re.compile(r"(?:(\d{1,2})-(\d{1,2})\s+)?(\d{1,2}):(\d{2}):(\d{2})")
 # since 指名的帧与观察 ts_wall 的容差：印出来的时间截断到秒，故下界 -1s、上界 +2s
@@ -64,6 +85,8 @@ SINCE_SLACK = 2.0
 PERSON_NOUNS = ("男子", "女子", "男人", "女人", "男孩", "女孩", "男生", "女生", "小孩")
 PERSON_RE = re.compile("|".join(PERSON_NOUNS))
 EPITHET_PREFIX = (2, 6)
+# 称呼册的容量上限：常驻 state，跟着库活很久，故必须有界；超出先忘最久没用过的词面。
+EPITHET_MEMORY = 200
 
 
 def epithet_forms(text: str) -> list[str]:
@@ -76,6 +99,17 @@ def epithet_forms(text: str) -> list[str]:
             if len(chars) >= k:
                 forms.add(chars[-k:] + m.group(0))
     return sorted(forms, key=len, reverse=True)
+
+
+def remember_epithets(known: list[str], kept: list[str]) -> list[str]:
+    """累计册：本次留下的词面排到最末，旧的保留，总数封顶 EPITHET_MEMORY。
+
+    只记上一行时，隔一行再写的称呼就从册子里掉出去了（普查：沿用里绝大多数是跨行沿用），
+    于是"没点名就沿用"拦不住。累计是修这一条；有界是必须的，否则 state 随天增长。
+    """
+    fresh = set(kept)
+    merged = [e for e in known if e not in fresh] + list(dict.fromkeys(kept))
+    return merged[-EPITHET_MEMORY:]
 
 
 def parse_stamp(text, ref_wall: float) -> float | None:
@@ -248,20 +282,24 @@ class Witness:
         return parse_ids(prev["obs_ids"]) if prev else []
 
     def _settle_epithets(self, content: str, mini: dict,
-                         n_frames: int) -> tuple[str | None, list[str]]:
+                         n_frames: int) -> tuple[str | None, list[str], list[dict]]:
         """通行称呼必须点名本轮某张图，点不出来就拒绝。
 
         `浅色外套男子` 这类站立描述只允许来自本行引用的帧。能留下的情形只有三种：
-        cast 里点名了本轮第 n 张图（1≤n≤本轮图数）；本轮首次出现（上一行没用过，
+        cast 里点名了本轮第 n 张图（1≤n≤本轮图数）；本轮首次出现（册里没有，
         故它只可能来自本帧）；本轮一张图都没有时——那就没有任何情形，全部拒绝。
 
-        上一行用过（state["epithets"] 记着）而本行又写出来的称呼，本模块无从复核像素，
-        所以拒绝而不是静默沿用：正文里删掉它、payload 记 epithet_refused、stats 计数、
-        日志留一行。删空的整行不落库（落一行空话比不落更糟）。
+        册里记过的称呼而本行又写出来的，本模块无从复核像素，所以拒绝而不是静默沿用：
+        正文里删掉它、payload 记 epithet_refused、stats 计数、日志留一行。册是累计的
+        （`state["epithets"]`，最近 EPITHET_MEMORY 个词面），所以隔几行再写的同一个称呼
+        就算中间那几行再也没提过它，也照样被拒。删空的整行不落库（落一行空话比不落更糟）。
+
+        保留下来的点名（图号在本轮范围内、且名字仍在正文里）原样返回，由 `_payload`
+        记进 `payload.cast`：事后判 C2 时，"这个沿用带没带点名"就看得到。
 
         机械看得到的只有名词尾（男子/女子/…），所以登记与比对都以名词前的后缀变体为准：
         模型不填 cast 时机制照样生效，代价是同一人反复出现时称呼会被反复拒绝。
-        返回 (content 或 None, 被拒称呼)。
+        返回 (content 或 None, 被拒称呼, 保留的点名)。
         """
         known = [e for e in self.store.get_state("epithets", []) if isinstance(e, str)]
         attributed, declared = [], []
@@ -274,10 +312,10 @@ class Witness:
                 continue
             declared.append(name)
             if isinstance(frame, int) and 1 <= frame <= n_frames:
-                attributed.append(name)
+                attributed.append((name, frame))
 
         def attributed_ok(form: str) -> bool:
-            return any(form in n or n in form for n in attributed)
+            return any(form in n or n in form for n, _ in attributed)
 
         refused, out = [], content
         if n_frames <= 0:  # 无帧可看：任何人物称呼都没有依据
@@ -297,38 +335,43 @@ class Witness:
             self.stats["epithet_refused"] = self.stats.get("epithet_refused", 0) + len(refused)
             self._log_err(f"[witness] 拒绝越帧称呼 {refused}（本轮未点名任何一图）")
         kept = [n for n in declared if n in out] + epithet_forms(out)
-        self.store.set_state("epithets", sorted(set(kept)))
+        self.store.set_state("epithets", remember_epithets(known, kept))
+        retained = [{"name": n, "frame": f} for n, f in attributed if n in out]
         if not out.strip():
-            return None, refused
-        return out, refused
+            return None, refused, retained
+        return out, refused, retained
 
     def _row_basis(self, mini: dict, content: str, frame_ids: list[int],
                    ref_wall: float, n_frames: int):
-        """一行落库前的证据基：称呼去留 → 切换句基帧并入 → 窗口取引用集合极值。
+        """一行落库前的证据基：称呼去留 → 对比句基帧并入 → 窗口取引用集合极值。
 
-        返回 (content|None, obs_ids, ts_start, ts_end, 基帧, 被拒称呼)；content 为 None
+        返回 (content|None, obs_ids, ts_start, ts_end, 基帧, 被拒称呼, 保留的点名)；
+        content 为 None 时——
         表示整行拒绝（只剩被拒称呼与计数），调用方丢弃本行。
         """
-        raw = content  # 切换句按模型写下的原话判：称呼被删掉也不该让过渡句消失
-        content, refused = self._settle_epithets(content, mini, n_frames)
+        raw = content  # 对比句按模型写下的原话判：称呼被删掉也不该让过渡句消失
+        content, refused, retained = self._settle_epithets(content, mini, n_frames)
         if content is None:
-            return None, [], ref_wall, ref_wall, [], refused
+            return None, [], ref_wall, ref_wall, [], refused, retained
         base = self._switch_base(mini, raw, ref_wall)
         ids = list(dict.fromkeys([*frame_ids, *base]))
         ts_start, ts_end = self._window_of(ids, ref_wall)
-        return content, ids, ts_start, ts_end, base, refused
+        return content, ids, ts_start, ts_end, base, refused, retained
 
     @staticmethod
-    def _payload(mini: dict, base: list[int], refused: list[str]) -> dict:
+    def _payload(mini: dict, base: list[int], refused: list[str],
+                 retained: list[dict]) -> dict:
         payload = {}
         if mini.get("importance") is not None:
             payload["importance"] = mini["importance"]
         if mini.get("candidate_project"):
             payload["candidate_project"] = mini["candidate_project"]
         if base:
-            payload["switch_base"] = base  # 过渡句的另一端：已入 obs_ids，此处只记明身份
+            payload["switch_base"] = base  # 对比句的另一端：已入 obs_ids，此处只记明身份
         if refused:
             payload["epithet_refused"] = refused  # 被拒称呼：失败可见，不静默沿用
+        if retained:
+            payload["cast"] = retained  # 保留的点名：C2 事后可判"这个称呼点了哪一帧"
         return payload
 
     # —— 主入口：一条观察 → 一条 small 消息 ——
@@ -357,7 +400,7 @@ class Witness:
             return None  # 链路 B 终点：丢弃 + 已日志
 
         is_anchor = mini["type"] == "anchor"
-        content, ids, ts_start, ts_end, base, refused = self._row_basis(
+        content, ids, ts_start, ts_end, base, refused, retained = self._row_basis(
             mini, mini.get("describe") or mini.get("diff") or "",
             [int(obs_row["id"])], obs_row["ts_wall"], 1 if obs_row["ref"] else 0)
         if content is None:
@@ -365,7 +408,7 @@ class Witness:
             self.log(f"[witness] 拒绝落行（称呼删空）：{fmt_wall(obs_row['ts_wall'])} "
                      f"refused={refused}")
             return None
-        payload = self._payload(mini, base, refused)
+        payload = self._payload(mini, base, refused, retained)
         mid = self.store.insert(
             "messages", level="small",
             ts_start=ts_start, ts_end=ts_end,
@@ -418,7 +461,7 @@ class Witness:
             self.stats["discarded"] += len(rows)
             self.log(f"[witness] 批解析失败丢弃 {len(rows)} 帧：{text[:100]!r}")
             return None
-        content, ids, ts_start, ts_end, base, refused = self._row_basis(
+        content, ids, ts_start, ts_end, base, refused, retained = self._row_basis(
             mini, mini.get("describe") or mini.get("diff") or "",
             [int(r["id"]) for r in rows], rows[0]["ts_wall"],
             sum(1 for r in rows if r["ref"]))
@@ -426,7 +469,7 @@ class Witness:
             self.stats["discarded"] += len(rows)
             self.log(f"[witness] 拒绝落行（称呼删空）丢弃 {len(rows)} 帧：refused={refused}")
             return None
-        payload = self._payload(mini, base, refused)
+        payload = self._payload(mini, base, refused, retained)
         mid = self.store.insert(
             "messages", level="small",
             ts_start=ts_start, ts_end=ts_end,
