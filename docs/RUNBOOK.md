@@ -94,6 +94,7 @@ python3 evals/run_eval.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.d
 10. **`freeze_snapshot.py --force` 重冻结是「先删旧再换名」**：中间有 kill 窗口；要保住旧副本就不要加 `--force`。
 11. **`messages.parent_id` 的索引 `idx_msg_parent` 由 `Store.__init__` 的 `executescript` 自动补建**：真实库尚未行使，首次以写模式打开时建索引（秒级）。
 12. **RUNBOOK 的测试清单是手写枚举**：新增 `tests/test_*.py` 必须同时加进这一行，否则不会被扫测。
+13. **见证层会拒绝越帧称呼**：`浅色外套男子` 这类上一行用过的人物称呼，模型没在 `cast` 里点名本轮某张图（图号从 1 起）就在正文里被删掉，并记进该行 `payload.epithet_refused` 与 `witness.stats.epithet_refused`；删空的整行丢弃不落库。正文里称呼不见时先看这两处。
 
 ## 待校准/待办
 
