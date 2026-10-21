@@ -10,7 +10,10 @@ d) 目标目录已存在时不带 `--force` 拒绝覆盖（退出码 3），原�
 e) 带 `--force` 覆盖后 `--verify` 仍通过；
 f) 备份失败（坏源 + `--force`）不毁旧快照：退出 2、旧副本哈希不变、不留半份文件；
 g) 冻结不动源库：源主文件摘要前后一致；
-h) 改动副本 1 字节后 `--verify` 退出 1 并说明哈希不符（不是静默通过）。
+h) 改动副本 1 字节后 `--verify` 退出 1 并说明哈希不符（不是静默通过）；
+i) 帧绑定：清单 `frames` 段记下被 small 行 obs_ids 指到的每个帧文件的 sha256，`--verify-frames`
+   在帧被换/被删/被引用却没绑定时退出 1（判定绑在像素上，不是只绑数据库），`--add-frames`
+   能给已有快照补绑而不动库哈希。
 运行：python3 tests/test_freeze.py
 """
 
@@ -95,6 +98,117 @@ def build_live_db(db: Path) -> tuple[dict, sqlite3.Connection]:
     live.commit()
     truth = count_rows(live)
     return truth, live
+
+
+def build_frames_case(root: Path) -> tuple[Path, list[Path]]:
+    """建一个带真实帧文件的合成库：被 small 行引用的帧才是清单该绑的东西。"""
+    frames = root / "frames" / "20260101"
+    frames.mkdir(parents=True)
+    paths = []
+    for name, size in (("a.jpg", 60000), ("b.jpg", 61000), ("c.jpg", 62000)):
+        path = frames / name
+        path.write_bytes(name.encode() * (size // len(name)))
+        paths.append(path)
+    source = root / "live.db"
+    store = Store(source)
+    for i, path in enumerate(paths):
+        store.insert("observations", ts_wall=2000.0 + i, ts_mono=float(i), sensor="screen",
+                     kind="screen.notable", key=f"k{i}", ref=str(path), bytes=path.stat().st_size)
+    # 第 3 行存在但没有帧（ref 为 NULL）：它不贡献引用，也不该被凭空绑定
+    store.insert("observations", ts_wall=2010.0, ts_mono=9.0, sensor="screen",
+                 kind="screen.notable", key="k-none", bytes=0)
+    store.insert("messages", level="small", ts_start=2000.0, ts_end=2001.0, content="批帧行",
+                 obs_ids=json.dumps([1, 2]))
+    store.insert("messages", level="small", ts_start=2002.0, ts_end=2002.0, content="单帧行",
+                 obs_ids=json.dumps([3]))
+    store.close()
+    return source, paths
+
+
+def test_frames(freeze) -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        source, paths = build_frames_case(root)
+        target = root / "snap" / "2026-01-01"
+        rc, out, err = run_main(freeze, ["--source", str(source), "--dir", str(target)])
+        check(rc == 0, f"冻结应退出 0（实际 {rc}）：{err}")
+        manifest = json.loads((target / "MANIFEST.json").read_text(encoding="utf-8"))
+        section = manifest.get("frames")
+        check(isinstance(section, dict), f"清单应有 frames 段：{list(manifest)}")
+        digests = section["sha256"]
+        check(sorted(digests) == sorted(str(p) for p in paths),
+              f"只绑被 small 行引用的帧（{sorted(digests)} vs {sorted(str(p) for p in paths)}）")
+        for path in paths:
+            check(digests[str(path)] == file_digest(path),
+                  f"帧摘要应与实算一致：{path}")
+        check(section["cited"] == 3 and section["hashed"] == 3 and section["missing"] == [],
+              f"覆盖计数不对：{section}")
+        check(section["bytes"] == sum(p.stat().st_size for p in paths), "帧体积合计不对")
+        print(f"frames manifest OK: {section['hashed']}/{section['cited']} 帧 "
+              f"{section['bytes']} 字节绑定进 MANIFEST.json")
+
+        rc, out, err = run_main(freeze, ["--verify-frames", "--dir", str(target)])
+        check(rc == 0, f"未改动时 --verify-frames 应通过（实际 {rc}）：{err}")
+        check("frames=" in out and str(section["bytes"]) in out,
+              f"通过时应报出帧数与体积：{out}")
+        print(f"verify frames OK: {out.strip()}")
+
+        # 帧被换掉（同字节数、不同内容）→ 判定不再绑同一张像素，必须退出 1
+        paths[0].write_bytes(b"Z" * 60000)
+        rc, out, err = run_main(freeze, ["--verify-frames", "--dir", str(target)])
+        check(rc == 1, f"帧被换后 --verify-frames 应退出 1（实际 {rc}）：{out}")
+        check("帧哈希不符" in err and str(paths[0]) in err, f"应点名是哪个帧不符：{err}")
+        paths[0].write_bytes(b"a.jpg" * (60000 // len("a.jpg")))  # 还原
+        rc, _, err = run_main(freeze, ["--verify-frames", "--dir", str(target)])
+        check(rc == 0, f"还原后应再次通过（实际 {rc}）：{err}")
+
+        # 库哈希没问题但帧被删 → 清单里的绑定断了，退出 1
+        gone = paths[1]
+        saved = gone.read_bytes()
+        gone.unlink()
+        rc, out, err = run_main(freeze, ["--verify-frames", "--dir", str(target)])
+        check(rc == 1, f"帧缺失后应退出 1（实际 {rc}）：{out}")
+        check("帧文件已不在" in err, f"应说明帧文件已不在：{err}")
+        gone.write_bytes(saved)
+
+        # 引用还在但清单没绑（手工删掉一条）→ 绑定不完整，退出 1
+        manifest = json.loads((target / "MANIFEST.json").read_text(encoding="utf-8"))
+        unbound = str(paths[2])
+        manifest["frames"]["sha256"].pop(unbound)
+        (target / "MANIFEST.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        rc, out, err = run_main(freeze, ["--verify-frames", "--dir", str(target)])
+        check(rc == 1, f"有引用没绑定应退出 1（实际 {rc}）：{out}")
+        check("未绑定哈希" in err and unbound in err, f"应点名哪个帧没绑：{err}")
+        coverage_err = err.strip().splitlines()[0]
+        # 不带 --verify-frames 的 --verify 只看库：此时仍通过（覆盖度归 --verify-frames 管）
+        rc, out, err = run_main(freeze, ["--verify", "--dir", str(target)])
+        check(rc == 0, f"--verify 只管库哈希，应仍通过（实际 {rc}）：{err}")
+        print(f"verify coverage OK: 未绑定帧被点名（{coverage_err[:60]}…）")
+
+        # --add-frames：给已有快照补绑，库哈希不动
+        live_manifest = (target / "MANIFEST.json").read_text(encoding="utf-8")
+        rc, out, err = run_main(freeze, ["--add-frames", "--dir", str(target)])
+        check(rc == 0, f"--add-frames 应退出 0（实际 {rc}）：{err}")
+        rc, out, err = run_main(freeze, ["--verify-frames", "--dir", str(target)])
+        check(rc == 0, f"补绑后 --verify-frames 应通过（实际 {rc}）：{err}")
+        check(json.loads((target / "MANIFEST.json").read_text(encoding="utf-8"))["snapshot_sha256"]
+              == json.loads(live_manifest)["snapshot_sha256"], "补绑不应改动快照哈希")
+        print(f"add frames OK: {out.strip()}")
+
+        # --no-frames：清单不带 frames 段，--verify-frames 判它不合格（判定不绑像素）
+        bare = root / "snap" / "2026-01-02"
+        rc, out, err = run_main(freeze, ["--source", str(source), "--dir", str(bare),
+                                         "--no-frames"])
+        check(rc == 0, f"--no-frames 冻结应退出 0（实际 {rc}）：{err}")
+        check("frames" not in json.loads((bare / "MANIFEST.json").read_text(encoding="utf-8")),
+              "带 --no-frames 时清单不该有 frames 段")
+        rc, out, err = run_main(freeze, ["--verify-frames", "--dir", str(bare)])
+        check(rc == 1, f"无 frames 段时 --verify-frames 应退出 1（实际 {rc}）：{out}")
+        check("未绑定" in err, f"应说明未绑定：{err}")
+        rc, out, err = run_main(freeze, ["--verify", "--dir", str(bare)])
+        check(rc == 0, f"无 frames 段时 --verify 仍应通过（实际 {rc}）：{err}")
+        check("警告" in err, f"--verify 应对未绑定的帧给警告：{err}")
+        print("no-frames OK: 跳过帧绑定时 --verify-frames 不合格、--verify 只警告")
 
 
 def main() -> None:
@@ -227,6 +341,7 @@ def main() -> None:
             print(f"tamper detect OK: rc={rc} {err.strip().splitlines()[0]}")
         finally:
             live.close()
+    test_frames(freeze)
     print(f"\nfreeze smoke: ALL PASS（{CHECKS} 条断言）")
 
 

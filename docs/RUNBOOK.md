@@ -49,9 +49,11 @@ sqlite3 ~/backseat-data/backseat.db \
   "SELECT value FROM state WHERE key='witness_cursor'; SELECT count(*) FROM observations;"
 sqlite3 ~/backseat-data/backseat.db \
   "SELECT value FROM state WHERE key='evict';"      # 最近一次驱逐水位（freed_bytes/evicted/used_after）
-for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
 python3 scripts/freeze_snapshot.py               # 冻结当天快照（目标已存在需 --force）
 python3 scripts/freeze_snapshot.py --verify      # 校验快照哈希（默认当天目录；改日需 --dir ~/backseat-data/snapshots/<UTC 日期>），不符退出 1
+python3 scripts/freeze_snapshot.py --verify-frames  # 同上 + 帧哈希 + 覆盖度（被 small 行引用的帧都绑上了没）；判定绑在像素上
+python3 scripts/freeze_snapshot.py --add-frames     # 给已有快照补 frames 段（不重做备份、不动库哈希）
 python3 evals/run_eval.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --n 50  # 在冻结快照上跑评测尺子
 ```
 

@@ -87,6 +87,15 @@ Store                       SQLite；引擎是唯一写入者（侦探只读）
 
 - `messages.obs_ids` 是唯一的引用通道：small 消息写入时由引擎填上它读过的 `observations.id`，读取方只读不改。
 - `content` 与 `intent` 里出现的任何可核对断言，都要能在 `obs_ids` 指向的原始观测里找到依据。
+  见证层写入时的三条落地规则（`backseat/witness.py`）：
+  - **切换句**（`从X切至Y`）：被切离的那一端就是这个断言的基帧，写入时并入本行 `obs_ids`
+    （模型 `since` 点名的帧优先，缺省取上一条 small 的 `obs_ids`）——过渡的两端同在一行。
+  - **通行称呼**（`浅色外套男子`）：只允许来自本行引用的帧。点名不出（`cast` 里没有落在本轮
+    图号范围内的项，或本轮根本没有帧）就在正文里删掉，并在 `payload.epithet_refused` 与
+    `stats.epithet_refused` 留痕，不沿用上一行。
+  - **窗口**：small 行的 `[ts_start, ts_end]` 取该行 `obs_ids` 所指观测 `ts_wall` 的 min/max。
+    `observations.id` 与 `ts_wall` 不同序（抓帧多路并发），按 id 取批首批尾会得到倒置窗口与
+    落在自窗外的引用；历史库里的 104 条倒置窗口行按已知降级保留，不回填。
 - 高层事件（"用户回来了""用户在纠正""用户在放弃"）是语义层推断，必须带证据引用，永不作为传感器输入。
 - 推断只向下游流动，不写回 observations；语义条目须带 `obs_ids`，medium/big 的例外见本节下两条（mid 读时汇总、big 递归汇总并显式降级）。
 - mid 消息的 `obs_ids` 经 `parent_id` 读时汇总：`backseat/kb.py` 的 flashback 用 `parent_id` 取子行的 `obs_ids` 并求并集，对 mid 有效。
@@ -129,6 +138,16 @@ labels 是独立命名空间，独占该表，与 observations / messages / expr
 
 本节的 D1–D8 各占一行，属"一条规则一行"，不按句拆。
 判定程序与分子分母住本节；通过阈值住 [ROADMAP.md](ROADMAP.md) 各门槛行，本节只复述以便就地判读。
+
+**D1 各分项各测什么**（口径住本节，彼此正交）：
+- **D1 A 测引用可解析且在窗内**：每条 small 行的每个 `obs_ids` 成员，id 在 observations 里存在，
+  且该观察的 `ts_wall` 落在本行 `[ts_start, ts_end]` 内。它测引用管道，不测内容真假。
+- **D1 B 测断言与帧相符**：独立评审逐行看 `obs_ids` 指向的帧，判"该帧支持该行的语义断言"，
+  50 条抽样 ≥95%。它测内容真假，测不到"断言的依据是否就在本行 `obs_ids` 里"。
+- 前两条之外，[语义层证据引用](#语义层证据引用) 的三条写入规则管的是"依据在不在行内"：切换句的
+  基帧是本行 `obs_ids` 的一员，通行称呼能在本行引用的帧里点名。它与 A/B 正交——B 全过仍可能
+  依据落在上一条消息的帧里，而这也不替 B 证明内容为真。它不是门槛：门槛住 ROADMAP，由项目
+  自己的节点定，本文只记写入规则与判定口径。
 
 **D1 语义回指率（M0′）**：D1 抽样范围固定为 small 行，不因 big 回指现状而变。从 messages 的 small 行抽样 200 条语义记录。程序：按 obs_ids 解析到 observations。判定 A＝id 存在且其 ts_wall 落在该消息 [ts_start, ts_end] 内；判定 B＝该观察的字段（key/content/ref/meta）确实支持该行的语义断言，由独立评审对 50 条抽样判定。通过＝A 达 100% 且 B ≥95%。
 
