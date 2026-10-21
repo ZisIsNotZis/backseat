@@ -13,8 +13,8 @@
 工作包（报告只发给本节点，不发给上一层）：
 
 1. **[已完] D1 普查尺子** —— `scripts/d1_census.py` + `tests/test_d1_census.py`：把 A、C1、C2 的分子分母、判定人口与退出码变成一条只读命令。判定程序住 [SCHEMA.md](SCHEMA.md#门槛判定程序)。
-2. **[已完] BS-M0P-封口** —— `idle-compute`，60 分钟，写入面 `backseat/witness.py` + `tests/test_witness_basis.py`：词面从 `从…切至` 放宽到一张闭集表、称呼册改累计（上限 200）、保留的点名进 `payload.cast`。落地 commit `02a413c`，测试 85 条断言全绿；数字见「证据指针」。
-3. **[已完] 基帧单步收窄** —— `_switch_base` 的缺省基帧从"上一条 small 的整个 `obs_ids`"收成"上一条 small 里 `ts_wall` 最新的那一帧"。理由：封口的报告在冻结快照上模拟出前者沿连续对比段**逐行累积**（obs_ids 长度 p99=41、最长 69，而今天落库最多 6），窗口随之往前延伸同样的跨度；契约只允许一步，收窄后每行最多多一帧，且不引入模型之外的信息。
+2. **[已完] BS-M0P-封口** —— `idle-compute`，60 分钟，写入面 `backseat/witness.py` + `tests/test_witness_basis.py`：词面从 `从…切至` 放宽到一张闭集表、称呼册改累计（上限 200）、保留的点名进 `payload.cast`。落地 commit `02a413c`；数字见「证据指针」。
+3. **[已完] 基帧单步收窄** —— `_switch_base` 的缺省基帧从"上一条 small 的整个 `obs_ids`"收成"上一条 small 里 `ts_wall` 最新的那一帧"。理由：封口的报告在冻结快照上模拟出前者沿连续对比段**逐行累积**（obs_ids 长度 p99=41、最长 69，而今天落库最多 6），窗口随之往前延伸同样的跨度；契约只允许一步，收窄后每行最多多一帧，且不引入模型之外的信息。测试 `tests/test_witness_basis.py` 现在 117 条断言（封口时 85，收窄新增 32）。
 4. **[已完] 门槛改写与文档落地** —— `docs/ROADMAP.md` 的 M0′ 门槛行与判定人口、`docs/SCHEMA.md` 的 D1 C 与 labels 一行、`docs/RUNBOOK.md` 的两条读数。
 5. **[等授权] 实跑 → 新快照 → 普查 + B 抽样** —— 判定人口非空之后才谈得上通过；在此之前 A/C 是"不能确立"，不是通过也没有失败。端点在跑（见「当前事实」），缺的是 token 授权与 scope 的裁决，两件都在上一层/用户手上。
 
@@ -26,6 +26,7 @@
 - **缺省基帧只取一帧**（本节点自己的决定，`BS-M0P` 报告第 5 节留的那条）：上一条 small 行里 `ts_wall` 最新的那一帧，不是它整行的 `obs_ids`。原来的"整行并进来"沿连续对比段累积——封口在冻结快照上模拟得 obs_ids 长度 median 6 / p95 26 / p99 41 / 最长 69（今天落库最多 6），窗口向前延伸同样的跨度，B 的评审要看几十帧才能判一行。收窄仍是一步、仍只看模型点名的 `since` 与本库已有行，不加深度。
 - **称呼记忆要累计**：普查量出 `state["epithets"]` 只记上一行，21,737 行沿用里 20,176 行是跨行沿用，写入器一次也拦不住——评审数到的 17/50 正是这一种。BS-M0P-封口 已把它改成累计（有界 200），并把保留的点名记进 `payload.cast`。代价只记不判：同一个人 200 个词面之后不点名就常被拒（`payload.epithet_refused` 可见），拒绝率是否长期 >50% 由修复后的一天实跑判。
 - **端点在跑，门卡在授权**：`127.0.0.1:4000` 自 2026-10-19 20:36 起由用户的 systemd 服务在跑（`ss -ltnp` 命中 litellm，带 key 的 `/v1/models` 返回 200），`run.log` 里 10-19 06:44 的 `Connection refused` 早于这次启动——"端点没起"是过期证据。所以 `实跑 → 新快照 → 普查` 缺的不是基础设施，是 tokens 的授权（person）与 scope 那一问（见 Roadmap 的工作包 5）。
+- **标题字段化：这一轮不做**（M0′ 的可选增强）。数据不是凭空要的：`observations.meta` 已有 868 帧带 `window_switch`（`SELECT count(*) FROM observations WHERE meta LIKE '%window_switch%'`），所以列化的路子是"从 meta 提列 + 让写入路径给每帧标题"。不做的理由：它的消费者是 M1′ 的基线（"只看窗口标题序列"），而它要动 observations 的写入路径——正在等的那次实跑要的是干净的判定人口，在它前面改写入面是拿门槛换一个 M1′ 的便利。重开于：实跑落地、M0′ 判完之后。
 - **`labels` 不进 M0′**：迁移已获授权，归 M1′；`docs/SCHEMA.md` 已写一行，别处的【待用户确认】已改掉。
 - **称呼机制对真模型的量法**：机制侧由测试固定（不合作的模型＝可见拒绝，不是静默沿用）；模型侧**没有**可用的模型调用（`idle-compute` 下不发模型请求），故只有两个事后读数：`payload.epithet_refused` 行数 / 含称呼行数（模型没点名 cast 的比例）、`run.log` 的 `拒绝落行` 数（整行只剩称呼的损失）。这两个数只记不判；判它的是**修复后的一天实跑**（≥200 行），读数在 `docs/RUNBOOK.md` 的验证节。若拒绝率长期 >50%，问题在提示词而不在规则，重开的是提示词而不是规则。
 
@@ -33,7 +34,7 @@
 
 - 冻结快照（通道 A 唯一输入）：`~/backseat-data/snapshots/2026-10-19/backseat.db`，`snapshot_sha256 d007dc75…`，`MANIFEST.json` 的 `frames` 段 26,424 帧 / 1,695,431,728 字节 / 0 缺失。
 - 普查：`python3 scripts/d1_census.py --db ~/backseat-data/snapshots/2026-10-19/backseat.db` → A：引用 27,012、坏 id 0、出窗 232、出窗行 104、倒置 12；C1：命中 20,360、记明 0；C2：含称呼 21,867、沿用 21,737（相邻 10,408 / 跨行 20,176）、点名 0。修复前同一命令的 C1 命中是 10,206（差 10,154 就是词面表放宽的那批行）；A 与 C2 在修复前后一个数没动（历史行不回填）。
-- 封口的旧代码对照：把 HEAD（`4668493`）的 `backseat/witness.py` 拷进新测试夹具，`epithet`/`markers`/`memory`/`cast`/`bound` 五节红，`batch`/`switch` 两节绿（故意：修复没搬动批窗口与 `since` 点名的语义）。测试 `python3 tests/test_witness_basis.py` → 85 条断言（旧 38 + 新 47）。
+- 封口的旧代码对照：把 HEAD（`4668493`）的 `backseat/witness.py` 拷进新测试夹具，`epithet`/`markers`/`memory`/`cast`/`bound` 五节红，`batch`/`switch` 两节绿（故意：修复没搬动批窗口与 `since` 点名的语义）。测试 `python3 tests/test_witness_basis.py` → 117 条断言（旧 38 + 封口 47 + 基帧收窄 32）。
 - 独立评审（D1 B）：`.scratch/d1-b-independent/review.md`（48/50，零余量；42/50 与 17/50 的敏感度；两个失败行 msg 620、msg 1946）。
 - 测试：`python3 tests/test_d1_census.py`；`python3 tests/test_witness_basis.py`；`docs/RUNBOOK.md` 验证节的一行循环（13 个文件）。
 - 上一层给本节点的信：已全部落地并删除（无残留）；本节点给上一层的报告在 `/home/z/vibe/mail/2026-10-21-backseat-owner.md`（workspace 仓库 `79d9b1f`）。
