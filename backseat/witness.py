@@ -370,6 +370,21 @@ class Witness:
         ts_start, ts_end = self._window_of(ids, ref_wall)
         return content, ids, ts_start, ts_end, base, refused, retained
 
+    def _write_small(self, mini: dict, content: str, ids: list[int],
+                     ts_start: float, ts_end: float, payload: dict) -> int:
+        """落一条 small 行（单帧与批帧共用同一写入形状）。返回消息 id。
+
+        锚状态不在这里动：单帧与批帧的累加口径不同（一批算 len(rows)），由调用方各自保留。
+        """
+        return self.store.insert(
+            "messages", level="small",
+            ts_start=ts_start, ts_end=ts_end,
+            content=content,
+            intent=mini.get("intent") or None,
+            type=mini["type"], source="vlm", model=self.model.model,
+            payload=payload or None,
+            obs_ids=json.dumps(ids))
+
     @staticmethod
     def _payload(mini: dict, base: list[int], refused: list[str],
                  retained: list[dict]) -> dict:
@@ -421,14 +436,7 @@ class Witness:
                      f"refused={refused}")
             return None
         payload = self._payload(mini, base, refused, retained)
-        mid = self.store.insert(
-            "messages", level="small",
-            ts_start=ts_start, ts_end=ts_end,
-            content=content,
-            intent=mini.get("intent") or None,
-            type=mini["type"], source="vlm", model=self.model.model,
-            payload=payload or None,
-            obs_ids=json.dumps(ids))
+        mid = self._write_small(mini, content, ids, ts_start, ts_end, payload)
         # 锚状态：anchor 重置计数与锚龄；diff 累加
         anchor = self.store.get_state("anchor", {})
         self.store.set_state("anchor", {
@@ -482,13 +490,7 @@ class Witness:
             self.log(f"[witness] 拒绝落行（称呼删空）丢弃 {len(rows)} 帧：refused={refused}")
             return None
         payload = self._payload(mini, base, refused, retained)
-        mid = self.store.insert(
-            "messages", level="small",
-            ts_start=ts_start, ts_end=ts_end,
-            content=content,
-            intent=mini.get("intent") or None,
-            type=mini["type"], source="vlm", model=self.model.model,
-            payload=payload or None, obs_ids=json.dumps(ids))
+        mid = self._write_small(mini, content, ids, ts_start, ts_end, payload)
         anchor = self.store.get_state("anchor", {})
         self.store.set_state("anchor", {"ts_wall": anchor.get("ts_wall"),
                                         "n": anchor.get("n", 0) + len(rows)})

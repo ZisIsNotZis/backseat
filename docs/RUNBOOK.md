@@ -49,7 +49,7 @@ sqlite3 ~/backseat-data/backseat.db \
   "SELECT value FROM state WHERE key='witness_cursor'; SELECT count(*) FROM observations;"
 sqlite3 ~/backseat-data/backseat.db \
   "SELECT value FROM state WHERE key='evict';"      # 最近一次驱逐水位（freed_bytes/evicted/used_after）
-for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py tests/test_rehearse_writes.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
 python3 scripts/freeze_snapshot.py               # 冻结当天快照（目标已存在需 --force）
 python3 scripts/freeze_snapshot.py --verify      # 校验快照哈希（默认当天目录；改日需 --dir ~/backseat-data/snapshots/<UTC 日期>），不符退出 1
 python3 scripts/freeze_snapshot.py --verify-frames  # 同上 + 帧哈希 + 覆盖度（被 small 行引用的帧都绑上了没）；判定绑在像素上
@@ -61,6 +61,9 @@ python3 evals/run_eval.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.d
 python3 -c "import json;a,b=(json.load(open(p)) for p in ('.tmp/e1.json','.tmp/e2.json'));[d['meta'].pop('generated_at_utc') for d in (a,b)];print('replay identical:',a==b)"
 python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db \
     --since-msg-id <冻结快照的 max small id>          # D1 A/C 普查（只读）：0 无缺陷 / 1 有缺陷 / 2 判定人口为空＝不能确立
+# 预演：拿冻结快照的 small 正文、用现在的写入规则重写进临时库，再对它普查（不发模型请求）
+python3 scripts/rehearse_writes.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --out /tmp/rehearse.db
+python3 scripts/d1_census.py --db /tmp/rehearse.db    # 预演库每行都是新规则写的，故不带 --since-msg-id
 sqlite3 -readonly ~/backseat-data/backseat.db \
   "SELECT count(*) FROM messages WHERE level='small' AND payload LIKE '%epithet_refused%';"  # 被拒称呼的行：模型没点名 cast，正文被删薄，但没静默沿用
 grep -c "拒绝落行" ~/backseat-data/run.log          # 只剩称呼而整行被丢：这个数比拒绝数更疼

@@ -7,10 +7,10 @@
 1. 读 [`docs/NODE.md`](docs/NODE.md)：这个节点为什么存在、roadmap 上有哪些工作包、当前决定过什么。
 2. 读 [`docs/ROADMAP.md`](docs/ROADMAP.md) 的 **M0′** 一节：要交的里程碑、门槛、判定人口、状态行。
 3. 读 `mail/`（若有）：每封信是 `kind/from/to/spend` 开头，读完先落地到 `docs/`，再删信、再提交。
-4. 跑一遍测试（13 个文件，约 12 秒）：
+4. 跑一遍测试（14 个文件，约 20 秒）：
 
 ```sh
-for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py tests/test_rehearse_writes.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
 ```
 
 ## 怎么继续
