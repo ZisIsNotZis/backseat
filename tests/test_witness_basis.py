@@ -16,8 +16,10 @@ d) 对比/过渡词面的闭集：表里每一族都要求基帧（`切换为`/`
    这三行拿不到基帧——判别力不靠注释；
 e) 称呼册累计：隔一行再写的称呼仍被拒（旧册只记上一行，中间那行一提不到它就漏），
    被拒的词面留在册里所以再写还是拒，点名才留，新称呼不被误删；
-f) 保留的点名进 `payload.cast`：点名的行有，没留下的行连键都不长；普查 C2 据此可判。
-运行：python3 tests/test_witness_basis.py [batch|switch|epithet|markers|memory|bound|cast]
+f) 保留的点名进 `payload.cast`：点名的行有，没留下的行连键都不长；普查 C2 据此可判
+   。
+g) 连续对比段不累积：一连串对比句每行只拿上一行**最近的那一帧**作基帧，obs_ids 长度恒为
+   本轮帧数 +1、窗口只往前一个台阶；旧写法（整行 `obs_ids` 并入）在同夹具上逐行长大。运行：python3 tests/test_witness_basis.py [batch|switch|epithet|markers|cascade|memory|bound|cast]
       （不带参数跑全部；分节是为了能在旧代码上单独跑出新节的红）
 """
 
@@ -350,22 +352,29 @@ def section_markers() -> None:
         got = [w.process(obs_row(store, oid)) for oid in ids]
         check(all(x is not None for x in got), f"五行都应落库：{got}")
 
-        prev_ids = [ids[0]]
+        prev_latest = ids[0]  # 上一条 small 行里 ts_wall 最新的那一帧（本夹具里就是它的本轮帧）
         for i, (text, fam) in enumerate(marked, start=1):
             row = store.conn.execute("SELECT * FROM messages WHERE id=?", (got[i],)).fetchone()
             cited = json.loads(row["obs_ids"])
             own = ids[i]
-            check(cited[0] == own and set(prev_ids) <= set(cited),
-                  f"{fam} 行应把上一行的帧并进来：{cited} vs 上一行 {prev_ids}")
-            check(payload_of(row).get("switch_base") == prev_ids,
-                  f"{fam} 行应记明基帧：{payload_of(row)} vs {prev_ids}")
+            check(cited == [own, prev_latest],
+                  f"{fam} 行应只并进上一行最近的那一帧：{cited} vs 本帧 {own}、上一行最近 {prev_latest}")
+            check(payload_of(row).get("switch_base") == [prev_latest],
+                  f"{fam} 行应记明基帧：{payload_of(row)} vs {[prev_latest]}")
             check(row["ts_start"] == min(wall_of(store, x) for x in cited),
                   f"{fam} 行的窗口应覆盖基帧：{row['ts_start']} vs {cited}")
             # 旧行为，同夹具：旧判据在这句上返回空基帧，所以旧代码写下的只能是本轮那一帧
             check(OLD_SWITCH_RE.search(text) is None,
                   f"{fam} 不是旧判据的族（夹具应让旧代码在这行丢基帧）：{text!r}")
             check(cited != [own], f"{fam}：旧代码的 obs_ids 就是 {[own]}")
-            prev_ids = cited
+            prev_latest = own
+
+        # 旧行为（整行 obs_ids 并入）在同一批行上的长度：2、3、4——逐行长大，收窄后恒为 2
+        grown, old_prev = [], [ids[0]]
+        for i in range(1, len(marked) + 1):
+            old_prev = [ids[i], *old_prev]
+            grown.append(len(old_prev))
+        check(grown == [2, 3, 4], f"夹具应让旧写法逐行累积：{grown}")
 
         plain = store.conn.execute("SELECT * FROM messages WHERE id=?", (got[4],)).fetchone()
         check(json.loads(plain["obs_ids"]) == [ids[4]],
@@ -373,6 +382,67 @@ def section_markers() -> None:
         check("switch_base" not in payload_of(plain), f"无对比句就不该记基帧：{payload_of(plain)}")
         print("markers OK: 切换为/相较上一帧/仍为 各得基帧，表外不连带；"
               f"旧判据在 {len(MARKER_TEXTS)} 条词面里只认 1 条")
+        store.close()
+
+
+# —— g) 连续对比段不累积 ——
+N_CASCADE = 12
+
+
+def section_no_accumulation() -> None:
+    """一连串对比句：每行只拿上一行最近的那一帧，窗口只往前一个台阶。"""
+    with tempfile.TemporaryDirectory() as td:
+        store = Store(Path(td) / "cascade.db")
+        frame = jpeg(Path(td) / "frame.jpg")
+        ids = [mk_obs(store, T + i * 10, frame) for i in range(N_CASCADE)]
+        w, _model = make_witness(store, td, [
+            anchor("终端在跑测试脚本"),
+            *(diff("从终端切至浏览器，页面在加载") for _ in range(N_CASCADE - 1)),
+        ])
+        got = [w.process(obs_row(store, oid)) for oid in ids]
+        check(all(x is not None for x in got), f"行都应落库：{got}")
+
+        sizes, spans = [], []
+        for i, mid in enumerate(got):
+            row = store.conn.execute("SELECT * FROM messages WHERE id=?", (mid,)).fetchone()
+            cited = json.loads(row["obs_ids"])
+            sizes.append(len(cited))
+            spans.append(round(row["ts_end"] - row["ts_start"], 3))
+            if i == 0:  # 库里没有上一条 small 行：没有前帧可指，就不假装有
+                check(cited == [ids[0]], f"首行没有前帧：{cited}")
+                check("switch_base" not in payload_of(row), f"首行不该长 switch_base：{payload_of(row)}")
+                continue
+            check(cited == [ids[i], ids[i - 1]],
+                  f"第 {i} 行应只并进上一行最近的那一帧：{cited}")
+            check(payload_of(row).get("switch_base") == [ids[i - 1]],
+                  f"第 {i} 行基帧应是一帧：{payload_of(row)}")
+
+        check(max(sizes[1:]) == 2, f"连续对比段每行最多两帧（本轮 + 基帧）：{sizes}")
+        check(set(spans[1:]) == {10.0}, f"窗口只往前一个台阶，不随段长长大：{spans}")
+
+        # 旧行为（整行 obs_ids 并入）：同一条链上的长度逐行长大，末行把整段都带上
+        grown, old_prev = [], [ids[0]]
+        for i in range(1, N_CASCADE):
+            old_prev = [ids[i], *old_prev]
+            grown.append(len(old_prev))
+        check(grown[-1] == N_CASCADE, f"夹具应让旧写法累积到段长：{grown[-1]}")
+        check(grown[1] > grown[0] and grown[-1] > max(sizes),
+              f"旧写法逐行长大而收窄后恒定：旧 {grown} / 新 {sizes}")
+
+        # 中间一首非对比行：下一行对比句的基帧仍是它的本轮帧，不是整段
+        plain = mk_obs(store, T + N_CASCADE * 10, frame)
+        _model.outputs.append(diff("终端里多了一行警告"))
+        mid_plain = w.process(obs_row(store, plain))
+        after = mk_obs(store, T + (N_CASCADE + 1) * 10, frame)
+        _model.outputs.append(diff("从终端切至浏览器，页面在加载"))
+        mid_after = w.process(obs_row(store, after))
+        row_after = store.conn.execute("SELECT * FROM messages WHERE id=?", (mid_after,)).fetchone()
+        check(json.loads(row_after["obs_ids"]) == [after, plain],
+              f"隔一首普通行后仍只并一帧：{json.loads(row_after['obs_ids'])}")
+        check(mid_plain is not None, "中间那首普通行应落库")
+
+        print(f"no accumulation OK: {N_CASCADE} 行连续对比段每行 obs_ids={sizes}（旧写法会长到 {grown[-1]}），"
+              f"窗口恒 10s")
         store.close()
 
 
@@ -501,6 +571,7 @@ SECTIONS = {"batch": section_batch_window,
             "switch": section_switch_base,
             "epithet": section_epithet,
             "markers": section_markers,
+            "cascade": section_no_accumulation,
             "memory": section_epithet_memory,
             "bound": section_epithet_bound,
             "cast": section_cast_record}

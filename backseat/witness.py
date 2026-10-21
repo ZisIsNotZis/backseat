@@ -58,8 +58,8 @@ SMALLS（事实流水）——均由记忆引擎维护注入，不是你生成�
 #
 # 表是**封闭**的：只收独立评审在 50 行里数到的族，写死在这里而不做成可配置——词面宽一档，
 # 就多一批行欠一个端点，这要是一次看得见的选择，不是让未知词面悄悄漏过。放宽的是"哪些行
-# 欠端点"，不是"端点从哪来"：基帧仍只取点名的 since 帧、缺省上一条 small 的 obs_ids，
-# 故每行最多多一帧、窗口最多往前多一帧（代价与收益见 docs/NODE.md 的"SWITCH_RE 放宽"）。
+# 欠端点"，不是"端点从哪来"：基帧仍只取点名的 since 帧、缺省上一条 small 里 ts_wall 最新
+# 的那一帧（一帧、一步），故每行最多多一帧、窗口最多往前一个台阶，连续对比段不累积。
 COMPARISON_MARKERS = (
     # 由…切至 / 由…切为 / 从…切至 / 从…切为（原 SWITCH_RE 只认这一族里的"从…切至"）
     ("switch", r"[由从][^，。；,;\s]{1,24}?切[至为]"),
@@ -260,11 +260,16 @@ class Witness:
         return min(walls), max(walls)
 
     def _switch_base(self, mini: dict, content: str, ref_wall: float) -> list[int]:
-        """切换句的被切离端：模型点名的 since 帧，缺省取上一条 small 的 obs_ids。
+        """切换句的被切离端：模型点名的 since 帧，缺省取上一条 small 里 ts_wall 最新的那一帧。
 
-        只有内容确实写了 `从X切至Y` 才加基帧——没有过渡句就没有第二个端点，不加，
-        以免把“上一条”无差别塞进每一行。基帧通常早于本轮帧，故本行窗口随之向后延伸
-        （窗口取自被引用集合的 min/max，不破坏“成员在窗内”）。
+        只有内容确实写了对比/过渡词面才加基帧——没有过渡句就没有第二个端点，不加，
+        以免把“上一条”无差别塞进每一行。
+
+        缺省只取**一帧**：上一条 small 行里 ts_wall 最新（即离本行最近）的那一个观察。
+        取它整行 obs_ids 会在连续对比段里逐行累积——每行把上一行的基帧也并进来，窗口
+        随之往前延伸同样跨度（模拟：obs_ids 长度 p99=41、最长 69，而落库最多 6）。
+        端点仍是一步、仍只看模型点名的 since 与本库已有行，不加深度搜索。
+        上一条 small 行一行都没有时返回空：没有前帧可指，就不假装有。
         """
         if not SWITCH_RE.search(content):
             return []
@@ -279,7 +284,14 @@ class Witness:
         prev = self.store.conn.execute(
             "SELECT obs_ids FROM messages WHERE level='small' AND obs_ids IS NOT NULL "
             "ORDER BY id DESC LIMIT 1").fetchone()
-        return parse_ids(prev["obs_ids"]) if prev else []
+        ids = parse_ids(prev["obs_ids"]) if prev else []
+        if not ids:  # 上一条 small 行没引用任何观察（或库里就没有）：没有前帧可指
+            return []
+        qs = ",".join("?" * len(ids))
+        row = self.store.conn.execute(
+            f"SELECT id FROM observations WHERE id IN ({qs}) ORDER BY ts_wall DESC LIMIT 1",
+            tuple(ids)).fetchone()
+        return [int(row["id"])] if row else []
 
     def _settle_epithets(self, content: str, mini: dict,
                          n_frames: int) -> tuple[str | None, list[str], list[dict]]:
