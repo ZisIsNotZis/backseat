@@ -37,7 +37,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backseat.witness import SWITCH_RE, epithet_forms  # 写入判据与称呼名词尾的唯一事实源
+from backseat.witness import (  # 写入判据与称呼名词尾的唯一事实源
+    SWITCH_RE,
+    epithet_forms,
+)
 
 # 只用于测召回：比写入用的 SWITCH_RE 宽，覆盖评审在 50 行里数到、而 SWITCH_RE 漏掉的词面。
 # 它不写库、不判定，只把"标记表漏了多少"变成一个数。
