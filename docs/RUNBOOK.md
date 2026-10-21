@@ -67,6 +67,19 @@ grep -c "拒绝落行" ~/backseat-data/run.log          # 只剩称呼而整行�
 `epithet_refused` 行数 / 含称呼行数 是"模型没点名"的比例，`拒绝落行` 是"整行只剩称呼"的损失；
 前者高是提示词没教会 `cast`，后者高是规则在吃正文——两者都只记数，不据此改规则（规则只看依据在不在行内）。
 
+## 生产判定人口（M0′ 的一次实跑）
+
+修复后的判定人口只能由一次真实运行产出；三步都能单独复算，顺序是这个：
+
+```sh
+./scripts/dev-up.sh                     # 或 --synthetic：合成帧也进 observations，只是内容无意义
+# 跑够 ≥200 行 small（B 的抽样与称呼拒绝率都要这个量），再：
+python3 scripts/freeze_snapshot.py       # 冻结当天快照（默认已含 frames 段）
+python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --since-msg-id 25900
+```
+
+`--since-msg-id` 一律取**旧**冻结快照的 max small id（当前 25,900），不要换成"今天"：它划的是修复前后的缝，不是日期。判定人口非空之前退出码是 2（不能确立），不是通过。
+
 ## 数据与日志位置
 
 | 路径 | 内容 |
