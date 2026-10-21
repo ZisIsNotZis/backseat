@@ -6,7 +6,8 @@
 
 1. 读 [`docs/NODE.md`](docs/NODE.md)：这个节点为什么存在、roadmap 上有哪些工作包、当前决定过什么。
 2. 读 [`docs/ROADMAP.md`](docs/ROADMAP.md) 的 **M0′** 一节：要交的里程碑、门槛、判定人口、状态行。
-3. 读 `mail/`（若有）：每封信是 `kind/from/to/spend` 开头，读完先落地到 `docs/`，再删信、再提交。
+3. 读 `inbox/` 与 `mail/`（若有）：每封信是 `kind/from/to/spend` 开头，读完先落地到 `docs/`，再删信、再提交。
+   收信与发信都走 `inbox/`：上一层的契约落在 `inbox/<日期>-*.md`，我给 root 的报告也写在那里（`to: root`），发完不留在 `mail/`。
 4. 跑一遍测试（14 个文件，约 20 秒）：
 
 ```sh
