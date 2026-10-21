@@ -420,6 +420,31 @@ def check_window_endpoints(db: Path) -> None:
           f"{keys_q['answer']} 已排除它）")
 
 
+def check_replay_identical(db: Path, td: Path) -> dict:
+    """同一记录重放两次：题集、答案、基线、引用判定逐项相同（ROADMAP M0′ 的重放判据）。
+
+    报告里唯一允许变的是 `meta.generated_at_utc`（报头生成时刻，与记录无关）；
+    其余任一字段不同都算重放不一致。这道检查会失败：题集若沾上时间、随机或字典序的
+    "偶发"，两次就不再相等——那一日 M0′ 的"重放复算一致"就是假的。
+    """
+    first, second = Path(td) / "replay-1.json", Path(td) / "replay-2.json"
+    for p in (first, second):
+        rc, _out, err = run_main(["--db", str(db), "--n", "8", "--json", str(p)])
+        check(rc == 0, (rc, err))
+    a, b = (json.loads(p.read_text(encoding="utf-8")) for p in (first, second))
+    check("generated_at_utc" in a["meta"] and "generated_at_utc" in b["meta"],
+          "报告应带报头时刻（两次可能落在同一秒，故不比它）")
+    a["meta"].pop("generated_at_utc")
+    b["meta"].pop("generated_at_utc")
+    check(a == b, "重放两次的报告除报头时刻外必须逐项相同")
+    # 判别力：把任一道题的答案改一个字，这条比较必须红（否则它比较的是空集）
+    tampered = json.loads(json.dumps(b))
+    tampered["questions"][0]["answer"] = str(tampered["questions"][0]["answer"]) + "x"
+    check(tampered != a, "重放比较必须认得出题目差异（否则它证明不了什么）")
+    print("replay OK: 同一库两次重放的题集 / 答案 / 基线 / 引用判定逐项相同（仅报头时刻不同）")
+    return a
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "eval.db"
@@ -503,6 +528,9 @@ def main() -> None:
               "三条基线 / B1 全体与语义子集 / 缺字段清单")
 
         data = json.loads(json_path.read_text(encoding="utf-8"))
+        replay = check_replay_identical(db, Path(td))
+        check(replay["questions"] == data["questions"],
+              "重放与首次运行的题集应完全一致（同一 seed 下题集不由时刻决定）")
         overall = data["evaluation"]["overall"]
         subset = data["evaluation"]["b1_semantic_subset"]
         check(len(data["questions"]) == 8 and overall["n"] == 8, overall["n"])

@@ -55,6 +55,10 @@ python3 scripts/freeze_snapshot.py --verify      # 校验快照哈希（默认�
 python3 scripts/freeze_snapshot.py --verify-frames  # 同上 + 帧哈希 + 覆盖度（被 small 行引用的帧都绑上了没）；判定绑在像素上
 python3 scripts/freeze_snapshot.py --add-frames     # 给已有快照补 frames 段（不重做备份、不动库哈希）
 python3 evals/run_eval.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --n 50  # 在冻结快照上跑评测尺子
+# 重放复算（M0′ 的判据）：同一库跑两次，除报头时刻外必须逐项相同
+python3 evals/run_eval.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --n 50 --json .tmp/e1.json
+python3 evals/run_eval.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db --n 50 --json .tmp/e2.json
+python3 -c "import json;a,b=(json.load(open(p)) for p in ('.tmp/e1.json','.tmp/e2.json'));[d['meta'].pop('generated_at_utc') for d in (a,b)];print('replay identical:',a==b)"
 python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db \
     --since-msg-id <冻结快照的 max small id>          # D1 A/C 普查（只读）：0 无缺陷 / 1 有缺陷 / 2 判定人口为空＝不能确立
 sqlite3 -readonly ~/backseat-data/backseat.db \
