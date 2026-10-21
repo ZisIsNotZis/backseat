@@ -91,6 +91,27 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backsea
 回填不能省：C2 的“沿用”是跨全库比的，不回填的话修复后第一次重写历史里的名字就不在册里，写出去就是静默沿用。
 代价是这些行被整行拒收（模型从不在 `cast` 里点名——轨迹里 24,553 次见证调用 0 次带 cast），预演切片上约占一半（**是下界**：预演的册子从空表起，没先回填历史词面，所以历史名字在预演里被当成“首次出现”放行；先回填的话那批行也会被拒）；这是 C2 归零的价钱，不是副作用。
 
+### 第二轮：产品模型，跑到 ≥200 行（`scripts/m0p-run2.sh`）
+
+```sh
+setsid nohup sh scripts/m0p-run2.sh >/dev/null 2>&1 < /dev/null &   # 自 detach；立刻返回
+ls ~/backseat-data/run2.DONE || tail -f ~/backseat-data/run2.driver.log
+```
+
+它自己做完五步，不需要人守：`backfill_epithets.py`（幂等）→ `dev-up.sh`（Xvfb + mpv + 守护进程，
+读仓库 `config.toml`＝产品模型）→ 每 30 秒看落库行数 → 到 `TARGET_ROWS=200` 或 `MAX_SECONDS=21600`（6 小时）
+→ `dev-down.sh` → 冻结 `~/backseat-data/snapshots/<UTC 日期>-run2/` → 用 `--since-msg-id 25908` 普查 → 写 `run2.DONE`。
+
+| 触发/读数 | 位置 |
+|---|---|
+| 跑完、跑停、或判失败 | `~/backseat-data/run2.DONE`（存在即结束；内容是行数、普查退出码、花销） |
+| 过程 | `~/backseat-data/run2.driver.log`（每 30 秒一行：行数、已耗时、load1） |
+| 提前停 | `touch /tmp/backseat-run2.yield`（脚本 30 秒内 `dev-down`，哨兵消失后自己续跑） |
+| 判失败的两种 | 15 分钟零落库（`STALL_SECONDS=900`）或网关 `/v1/models` 非 200：写 `run2.DONE` 并说原因，不空转到 6 小时 |
+| 让路 | 每 tick 看 `pgrep -af flashdb` 有没有 measure/bench 类进程（flashdb 的静默窗）；有就停在本轮最后一次写入，等它消失再续 |
+
+判定人口是 `messages.id > 25908`（第一轮 deepseek 的最后一行）：换模型写出的行不混进同一个人口，见 [SCHEMA.md](SCHEMA.md) 的模型分界。
+
 ### 已经跑过的一次（2026-10-21 22:23:34–22:36:54，有界 13 分 20 秒）
 
 配置：`display=":99"`（Xvfb 合成源）、`model="deepseek/deepseek-flash"`、`sample_high=6.0`、`batch_max=1`、`digest_min=30`；其余同 `config.toml`。启动是 dev-up.sh 的两条帧源命令 + `python3 -m backseat --data-dir ~/backseat-data --config <那份临时配置>`，停止是 `./scripts/dev-down.sh` 然后 `freeze_snapshot.py`。
@@ -124,7 +145,7 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backsea
 
 | 模型 | 状态 |
 |---|---|
-| `github_copilot/gpt-6-luna` | **产品选用**（config.toml 的 `model`）：约 8s/批调用、265 tok/帧；月配额，每月 1 日重置 |
+| `github_copilot/gpt-6-luna` | **产品选用**（config.toml 的 `model`，第二轮实跑用它）：约 8s/批调用、265 tok/帧；视觉可用；月配额，每月 1 日重置。网关价表（`curl -H "Authorization: Bearer $LITELLM_API_KEY" 127.0.0.1:4000/model/info`）：$0.10/M in、$0.50/M out——这是路由上的标价，实际扣的是 Copilot 月配额 |
 | `deepseek/deepseek-flash` | **实跑用的便宜运行时模型**：视觉可用（图走 `image_url` data URL）、2.97s/批（32 次调用中位数，max 5.1s）、8987 tok in / 378 tok out 每批；按量：$0.30/M in、$1.20/M out、$0.006/M cache-read（价格源 `curl /model/info`），一次 13 分钟的实跑合计 $0.037 |
 | `volcengine/glm-5.3-flash` | 备用：可用但慢（~104s/批）且**周配额 + 5 小时滚动配额**双限制 |
 | `zai-coding/glm-5.3-flash` | 用户 Coding Plan；需 litellm yml 里 `api_base: https://open.bigmodel.cn/api/coding/paas/v4`（按量端点会报余额不足） |

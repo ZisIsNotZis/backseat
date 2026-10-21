@@ -167,6 +167,9 @@ labels 是独立命名空间，独占该表，与 observations / messages / expr
 **判定人口**：A 与 C 判 `messages.id` 大于 `--since-msg-id` 的 small 行——`id` 单调而历史行不会变，
 所以历史行（修复前写入，没有 `switch_base`/`cast` 可读）只作已知降级计数，不进判定。
 判定人口为空时普查退出 2（不能确立），不是通过。
+**模型分界**：一个人口只由一种运行时模型写出的行组成——换模型写出的行不混进来（同一个人口里两个模型，
+读数就说不清是谁的）。第一轮（`deepseek/deepseek-flash`）与第二轮（产品模型 `github_copilot/gpt-6-luna`）
+之间以 `messages.id > 25908` 切分，`25908` 是第一轮的最后一行。
 
 ```sh
 python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC 日期>/backseat.db \
