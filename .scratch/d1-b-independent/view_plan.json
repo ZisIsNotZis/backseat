@@ -1,0 +1,352 @@
+[
+ {
+  "i": 1,
+  "msg": 205,
+  "obs": 656,
+  "src": "/home/z/backseat-data/frames/20260928/153359.jpg",
+  "view": "view/r01_m205_o656.jpg"
+ },
+ {
+  "i": 2,
+  "msg": 620,
+  "obs": 2148,
+  "src": "/home/z/backseat-data/frames/20260929/162431.jpg",
+  "view": "view/r02_m620_o2148.jpg"
+ },
+ {
+  "i": 3,
+  "msg": 1946,
+  "obs": 4585,
+  "src": "/home/z/backseat-data/frames/20260930/185833.jpg",
+  "view": "view/r03_m1946_o4585.jpg"
+ },
+ {
+  "i": 4,
+  "msg": 2694,
+  "obs": 11237,
+  "src": "/home/z/backseat-data/frames/20261002/091611.jpg",
+  "view": "view/r04_m2694_o11237.jpg"
+ },
+ {
+  "i": 5,
+  "msg": 2759,
+  "obs": 11317,
+  "src": "/home/z/backseat-data/frames/20261002/094322.jpg",
+  "view": "view/r05_m2759_o11317.jpg"
+ },
+ {
+  "i": 6,
+  "msg": 2846,
+  "obs": 11421,
+  "src": "/home/z/backseat-data/frames/20261002/101844.jpg",
+  "view": "view/r06_m2846_o11421.jpg"
+ },
+ {
+  "i": 7,
+  "msg": 3095,
+  "obs": 11713,
+  "src": "/home/z/backseat-data/frames/20261002/120231.jpg",
+  "view": "view/r07_m3095_o11713.jpg"
+ },
+ {
+  "i": 8,
+  "msg": 3194,
+  "obs": 11833,
+  "src": "/home/z/backseat-data/frames/20261002/124419.jpg",
+  "view": "view/r08_m3194_o11833.jpg"
+ },
+ {
+  "i": 9,
+  "msg": 4461,
+  "obs": 13340,
+  "src": "/home/z/backseat-data/frames/20261002/212525.jpg",
+  "view": "view/r09_m4461_o13340.jpg"
+ },
+ {
+  "i": 10,
+  "msg": 4576,
+  "obs": 13483,
+  "src": "/home/z/backseat-data/frames/20261002/221657.jpg",
+  "view": "view/r10_m4576_o13483.jpg"
+ },
+ {
+  "i": 11,
+  "msg": 5050,
+  "obs": 14055,
+  "src": "/home/z/backseat-data/frames/20261003/014012.jpg",
+  "view": "view/r11_m5050_o14055.jpg"
+ },
+ {
+  "i": 12,
+  "msg": 5769,
+  "obs": 14917,
+  "src": "/home/z/backseat-data/frames/20261003/064130.jpg",
+  "view": "view/r12_m5769_o14917.jpg"
+ },
+ {
+  "i": 13,
+  "msg": 6389,
+  "obs": 15664,
+  "src": "/home/z/backseat-data/frames/20261003/110037.jpg",
+  "view": "view/r13_m6389_o15664.jpg"
+ },
+ {
+  "i": 14,
+  "msg": 6448,
+  "obs": 15732,
+  "src": "/home/z/backseat-data/frames/20261003/112446.jpg",
+  "view": "view/r14_m6448_o15732.jpg"
+ },
+ {
+  "i": 15,
+  "msg": 7033,
+  "obs": 16441,
+  "src": "/home/z/backseat-data/frames/20261003/152957.jpg",
+  "view": "view/r15_m7033_o16441.jpg"
+ },
+ {
+  "i": 16,
+  "msg": 7575,
+  "obs": 17089,
+  "src": "/home/z/backseat-data/frames/20261003/191554.jpg",
+  "view": "view/r16_m7575_o17089.jpg"
+ },
+ {
+  "i": 17,
+  "msg": 7728,
+  "obs": 17283,
+  "src": "/home/z/backseat-data/frames/20261003/202430.jpg",
+  "view": "view/r17_m7728_o17283.jpg"
+ },
+ {
+  "i": 18,
+  "msg": 8438,
+  "obs": 18150,
+  "src": "/home/z/backseat-data/frames/20261004/013031.jpg",
+  "view": "view/r18_m8438_o18150.jpg"
+ },
+ {
+  "i": 19,
+  "msg": 9278,
+  "obs": 19150,
+  "src": "/home/z/backseat-data/frames/20261004/071958.jpg",
+  "view": "view/r19_m9278_o19150.jpg"
+ },
+ {
+  "i": 20,
+  "msg": 9713,
+  "obs": 19683,
+  "src": "/home/z/backseat-data/frames/20261004/102608.jpg",
+  "view": "view/r20_m9713_o19683.jpg"
+ },
+ {
+  "i": 21,
+  "msg": 10756,
+  "obs": 20962,
+  "src": "/home/z/backseat-data/frames/20261004/175249.jpg",
+  "view": "view/r21_m10756_o20962.jpg"
+ },
+ {
+  "i": 22,
+  "msg": 10879,
+  "obs": 21107,
+  "src": "/home/z/backseat-data/frames/20261004/184326.jpg",
+  "view": "view/r22_m10879_o21107.jpg"
+ },
+ {
+  "i": 23,
+  "msg": 13343,
+  "obs": 24093,
+  "src": "/home/z/backseat-data/frames/20261005/120819.jpg",
+  "view": "view/r23_m13343_o24093.jpg"
+ },
+ {
+  "i": 24,
+  "msg": 13568,
+  "obs": 24369,
+  "src": "/home/z/backseat-data/frames/20261005/134642.jpg",
+  "view": "view/r24_m13568_o24369.jpg"
+ },
+ {
+  "i": 25,
+  "msg": 13582,
+  "obs": 24386,
+  "src": "/home/z/backseat-data/frames/20261005/135318.jpg",
+  "view": "view/r25_m13582_o24386.jpg"
+ },
+ {
+  "i": 26,
+  "msg": 13652,
+  "obs": 24465,
+  "src": "/home/z/backseat-data/frames/20261005/142018.jpg",
+  "view": "view/r26_m13652_o24465.jpg"
+ },
+ {
+  "i": 27,
+  "msg": 14102,
+  "obs": 25004,
+  "src": "/home/z/backseat-data/frames/20261005/172741.jpg",
+  "view": "view/r27_m14102_o25004.jpg"
+ },
+ {
+  "i": 28,
+  "msg": 15364,
+  "obs": 26523,
+  "src": "/home/z/backseat-data/frames/20261006/021828.jpg",
+  "view": "view/r28_m15364_o26523.jpg"
+ },
+ {
+  "i": 29,
+  "msg": 15411,
+  "obs": 26578,
+  "src": "/home/z/backseat-data/frames/20261006/023708.jpg",
+  "view": "view/r29_m15411_o26578.jpg"
+ },
+ {
+  "i": 30,
+  "msg": 15425,
+  "obs": 26599,
+  "src": "/home/z/backseat-data/frames/20261006/024421.jpg",
+  "view": "view/r30_m15425_o26599.jpg"
+ },
+ {
+  "i": 31,
+  "msg": 15455,
+  "obs": 26632,
+  "src": "/home/z/backseat-data/frames/20261006/025533.jpg",
+  "view": "view/r31_m15455_o26632.jpg"
+ },
+ {
+  "i": 32,
+  "msg": 16323,
+  "obs": 27689,
+  "src": "/home/z/backseat-data/frames/20261006/091235.jpg",
+  "view": "view/r32_m16323_o27689.jpg"
+ },
+ {
+  "i": 33,
+  "msg": 16348,
+  "obs": 27722,
+  "src": "/home/z/backseat-data/frames/20261006/092352.jpg",
+  "view": "view/r33_m16348_o27722.jpg"
+ },
+ {
+  "i": 34,
+  "msg": 16503,
+  "obs": 27902,
+  "src": "/home/z/backseat-data/frames/20261006/102605.jpg",
+  "view": "view/r34_m16503_o27902.jpg"
+ },
+ {
+  "i": 35,
+  "msg": 18647,
+  "obs": 30492,
+  "src": "/home/z/backseat-data/frames/20261007/022113.jpg",
+  "view": "view/r35_m18647_o30492.jpg"
+ },
+ {
+  "i": 36,
+  "msg": 18883,
+  "obs": 30783,
+  "src": "/home/z/backseat-data/frames/20261007/040211.jpg",
+  "view": "view/r36_m18883_o30783.jpg"
+ },
+ {
+  "i": 37,
+  "msg": 19218,
+  "obs": 31182,
+  "src": "/home/z/backseat-data/frames/20261007/062246.jpg",
+  "view": "view/r37_m19218_o31182.jpg"
+ },
+ {
+  "i": 38,
+  "msg": 19546,
+  "obs": 31568,
+  "src": "/home/z/backseat-data/frames/20261007/083734.jpg",
+  "view": "view/r38_m19546_o31568.jpg"
+ },
+ {
+  "i": 39,
+  "msg": 20310,
+  "obs": 32486,
+  "src": "/home/z/backseat-data/frames/20261007/135854.jpg",
+  "view": "view/r39_m20310_o32486.jpg"
+ },
+ {
+  "i": 40,
+  "msg": 20977,
+  "obs": 33274,
+  "src": "/home/z/backseat-data/frames/20261007/183614.jpg",
+  "view": "view/r40_m20977_o33274.jpg"
+ },
+ {
+  "i": 41,
+  "msg": 21169,
+  "obs": 33503,
+  "src": "/home/z/backseat-data/frames/20261007/195455.jpg",
+  "view": "view/r41_m21169_o33503.jpg"
+ },
+ {
+  "i": 42,
+  "msg": 21765,
+  "obs": 34220,
+  "src": "/home/z/backseat-data/frames/20261008/000651.jpg",
+  "view": "view/r42_m21765_o34220.jpg"
+ },
+ {
+  "i": 43,
+  "msg": 22692,
+  "obs": 35340,
+  "src": "/home/z/backseat-data/frames/20261008/063520.jpg",
+  "view": "view/r43_m22692_o35340.jpg"
+ },
+ {
+  "i": 44,
+  "msg": 23482,
+  "obs": 36307,
+  "src": "/home/z/backseat-data/frames/20261008/121958.jpg",
+  "view": "view/r44_m23482_o36307.jpg"
+ },
+ {
+  "i": 45,
+  "msg": 23932,
+  "obs": 36916,
+  "src": "/home/z/backseat-data/frames/20261013/203457.jpg",
+  "view": "view/r45_m23932_o36916.jpg"
+ },
+ {
+  "i": 46,
+  "msg": 24551,
+  "obs": 37666,
+  "src": "/home/z/backseat-data/frames/20261014/011056.jpg",
+  "view": "view/r46_m24551_o37666.jpg"
+ },
+ {
+  "i": 47,
+  "msg": 24692,
+  "obs": 37832,
+  "src": "/home/z/backseat-data/frames/20261014/020731.jpg",
+  "view": "view/r47_m24692_o37832.jpg"
+ },
+ {
+  "i": 48,
+  "msg": 24895,
+  "obs": 38083,
+  "src": "/home/z/backseat-data/frames/20261014/033633.jpg",
+  "view": "view/r48_m24895_o38083.jpg"
+ },
+ {
+  "i": 49,
+  "msg": 25243,
+  "obs": 38497,
+  "src": "/home/z/backseat-data/frames/20261014/060032.jpg",
+  "view": "view/r49_m25243_o38497.jpg"
+ },
+ {
+  "i": 50,
+  "msg": 25295,
+  "obs": 41673,
+  "src": "/home/z/backseat-data/frames/20261015/090747.jpg",
+  "view": "view/r50_m25295_o41673.jpg"
+ }
+]

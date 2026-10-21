@@ -1,0 +1,1759 @@
+{
+ "db": "/home/z/backseat-data/snapshots/2026-10-19/backseat.db",
+ "seed": 3371,
+ "population": 24551,
+ "picked_indices": [
+  195,
+  588,
+  1844,
+  2554,
+  2615,
+  2698,
+  2934,
+  3027,
+  4228,
+  4338,
+  4787,
+  5468,
+  6056,
+  6112,
+  6666,
+  7180,
+  7325,
+  7999,
+  8795,
+  9206,
+  10196,
+  10312,
+  12647,
+  12860,
+  12874,
+  12940,
+  13367,
+  14563,
+  14607,
+  14620,
+  14649,
+  15472,
+  15496,
+  15642,
+  17675,
+  17899,
+  18216,
+  18527,
+  19251,
+  19883,
+  20065,
+  20630,
+  21509,
+  22258,
+  22684,
+  23271,
+  23404,
+  23598,
+  23927,
+  23977
+ ],
+ "rows": [
+  {
+   "rank_in_pop": 195,
+   "msg_id": 205,
+   "ts_start": 1790580683.2844896,
+   "ts_end": 1790580839.5095067,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "检查仓库链接与项目目录",
+   "content": "多窗格终端工作区上方弹出前景终端，运行脚本检查多个仓库文档中的 Git 链接及项目目录；终端输出称发现 38 个链接，其中 37 个已索引，并提示配置可能缺少表达式。背景窗格继续显示多个仓库任务，learn_draw 的测试通过。",
+   "payload": "{\"importance\": 0.45}",
+   "obs_ids": [
+    651,
+    652,
+    653,
+    654,
+    655,
+    656
+   ],
+   "refs": [
+    {
+     "obs_id": 651,
+     "exists": true,
+     "ts_wall": 1790580683.2844896,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": -156.225,
+     "kind": "screen.notable",
+     "key": "phash:4001987fbf83f80f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260928/153123.jpg",
+     "meta": "{}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 652,
+     "exists": true,
+     "ts_wall": 1790580705.3143857,
+     "in_window": true,
+     "delta_to_start": 22.03,
+     "delta_to_end": -134.195,
+     "kind": "screen.notable",
+     "key": "phash:0181807e3f81ff8f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260928/153145.jpg",
+     "meta": "{}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 653,
+     "exists": true,
+     "ts_wall": 1790580707.3173707,
+     "in_window": true,
+     "delta_to_start": 24.033,
+     "delta_to_end": -132.192,
+     "kind": "screen.notable",
+     "key": "phash:4181803f9f81ff0f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260928/153147.jpg",
+     "meta": "{}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 654,
+     "exists": true,
+     "ts_wall": 1790580727.3430133,
+     "in_window": true,
+     "delta_to_start": 44.059,
+     "delta_to_end": -112.166,
+     "kind": "screen.notable",
+     "key": "phash:7041803f8f83fe0f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260928/153207.jpg",
+     "meta": "{}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 655,
+     "exists": true,
+     "ts_wall": 1790580839.5095067,
+     "in_window": true,
+     "delta_to_start": 156.225,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7800383f9f3c6387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260928/153359.jpg",
+     "meta": "{\"trigger\": \"window_switch\", \"event_payload\": {\"to\": \"vibe · On\", \"wm_class\": \"Gnome-terminal\"}}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 656,
+     "exists": true,
+     "ts_wall": 1790580839.5095067,
+     "in_window": true,
+     "delta_to_start": 156.225,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7800383f9f3c6387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260928/153359.jpg",
+     "meta": "{\"trigger\": \"fullscreen_toggle\", \"event_payload\": {\"to\": false}}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 588,
+   "msg_id": 620,
+   "ts_start": 1790670260.2827108,
+   "ts_end": 1790670271.5393963,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "关闭对比图查看器，回到五列终端审阅各仓代理进展与待拍板的行动议",
+   "content": "aliyun/stripe 对比查看器窗口关闭，画面回到 ~/vibe 五列终端全景（期间左上角一度弹出一个小型空白 Terminal 窗口后消失）。终端各列状态：①autofe 列——代理把用户此前对三联对比图的人工核对复述为 key findings（sspai 相关推荐与正文太接近问题未解决、aside/zone 样式归属与 .zone 定义自查等），并展示『四、汇总行动议（等你点头再动）』四项表格（1 强制无测试先造测试/2 设计文档加约束禁止仓库级充能/3 实现边界修正+用 T-31 做 A/B/4 FP-7 正则逐步换 LSP Symbol DB），用户裁决文字在画：『1、2 我认为无争议的，3 是你说的方式，我补充了裁决机制，4 是中期工程，从 1、2 开始』；②flashdb 列——转入 memtable 调试：逐条排查 evict_through/publish cutoff 断言（b5 提交后 entries 数对不上、unique(do(csn)) 返回 3 Got 4 等），$rg -n 'evict_through' engine/src/memtable.rs -A14 读码，测试陆续 passed；③learn_draw 列——定稿 S1 停车报告（vector-visibility.py 用 SVG 弧段替换整三角带、按深度裁切并抠出手部/头部纽扣、81/81+空间 9/9、两次生成的人偶 SVG 唯一一致、提交 24693d4 工作树干净）；④fat_kakeya——agent-03-final-integration 工作树正式 ε=0.005 待跑 48 格、agent-04-theory-bridge-probe K256 理论转场（f258de8）；⑤agentworld——ticket 12 实验切片以 zai/glm-5.3-flash 启动（socialfood CLI→comparisons/metrics/costs→final review→merge master）；⑥backseat——旧实例 bb3bb2796 Exited code 1 标 superseded，pgrep 复核现实例 1109513（danku_engine，HQ-M5 display=1）存活续 48h 采样；sys_gal v3.218/v4.377 全绿（fix/v4-world-contracts）；[remote-pi] connected as 'sys_gal'。全程无新的用户输入入画，属查看器收起后回归终端巡检。",
+   "payload": "{\"importance\": 0.3}",
+   "obs_ids": [
+    2143,
+    2144,
+    2145,
+    2146,
+    2147,
+    2148
+   ],
+   "refs": [
+    {
+     "obs_id": 2143,
+     "exists": true,
+     "ts_wall": 1790670260.2827108,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": -11.257,
+     "kind": "screen.notable",
+     "key": "phash:07fe7c707807808f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260929/162420.jpg",
+     "meta": "{}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 2144,
+     "exists": true,
+     "ts_wall": 1790670263.3986642,
+     "in_window": true,
+     "delta_to_start": 3.116,
+     "delta_to_end": -8.141,
+     "kind": "screen.notable",
+     "key": "phash:07f8780ff803838f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260929/162423.jpg",
+     "meta": "{}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 2145,
+     "exists": true,
+     "ts_wall": 1790670284.3787956,
+     "in_window": false,
+     "delta_to_start": 24.096,
+     "delta_to_end": 12.839,
+     "kind": "screen.notable",
+     "key": "phash:7860783f87878387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260929/162444.jpg",
+     "meta": "{\"trigger\": \"window_switch\", \"event_payload\": {\"to\": \"Terminal\", \"wm_class\": \"Gnome-terminal\"}}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 2146,
+     "exists": true,
+     "ts_wall": 1790670284.3787956,
+     "in_window": false,
+     "delta_to_start": 24.096,
+     "delta_to_end": 12.839,
+     "kind": "screen.notable",
+     "key": "phash:7860783f87878387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260929/162444.jpg",
+     "meta": "{\"trigger\": \"fullscreen_toggle\", \"event_payload\": {\"to\": false}}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 2147,
+     "exists": true,
+     "ts_wall": 1790670268.8362179,
+     "in_window": true,
+     "delta_to_start": 8.554,
+     "delta_to_end": -2.703,
+     "kind": "screen.notable",
+     "key": "phash:7fe0307ff0706007",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260929/162428.jpg",
+     "meta": "{}",
+     "file_exists": true
+    },
+    {
+     "obs_id": 2148,
+     "exists": true,
+     "ts_wall": 1790670271.5393963,
+     "in_window": true,
+     "delta_to_start": 11.257,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7fc0787f60707007",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260929/162431.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 1844,
+   "msg_id": 1946,
+   "ts_start": 1790765913.4528177,
+   "ts_end": 1790765913.4528177,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "以低频远程差分截图持续巡检无人值守挂机轮播，核对换源节奏、场景族归档与播放推进线索",
+   "content": "相对上一样本（18:58:12，MV源彩绘玻璃厅复古立麦族演唱中景）：本帧（18:58:33）为同戳双份样本、两帧完全一致，依既有口径不对暂停/推进单独下结论。仍为MV源（Rick Astley素材、两侧黑边），距上帧21秒内完成一次源内切镜/推近（间隔≤21秒、处17–97秒区间下沿附近）：画面由立麦后演唱中景（双手抬于胸前）切至面部特写——男子张口露齿演唱，复古立麦网罩位于下颌下方，背景为过曝发白的格状彩绘玻璃高窗；上帧姿态与本帧构图差异佐证播放推进。构图归入已归档『彩绘玻璃厅复古立麦』族循环回归，与既往记录的演唱特写相位相符。整帧覆粉白雾状泛白叠加（与上帧一致、持续复现），维持播放器/系统级上层叠加、非源绑定既有判读；本帧未见MV源横向撕裂伪影、无硬字幕。×形光标钉于画面中部原位、无播放器界面；用户仍处离场状态（自08:54累计约10小时），巡检为唯一进行中活动，播放列表业务性质仍无证据、待确认。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    4585
+   ],
+   "refs": [
+    {
+     "obs_id": 4585,
+     "exists": true,
+     "ts_wall": 1790765913.4528177,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c78787007f87807",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20260930/185833.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 2554,
+   "msg_id": 2694,
+   "ts_start": 1790903771.8273568,
+   "ts_end": 1790903771.8273568,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "巡检轮播视频的镜头切换与画面变化",
+   "content": "较09:14:52带“ever”标识的夜间敞篷车双人镜头，画面切换为MV场景：金发女子穿黑色无袖上衣，侧身站在彩绘玻璃窗前。画面两侧有黑边，中央可见×形标记，整体带紫白雾感。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    11237
+   ],
+   "refs": [
+    {
+     "obs_id": 11237,
+     "exists": true,
+     "ts_wall": 1790903771.8273568,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:03f87c780ff0038f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261002/091611.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 2615,
+   "msg_id": 2759,
+   "ts_start": 1790905402.9243743,
+   "ts_end": 1790905402.9243743,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "巡检相邻帧的镜头切换与字幕复现",
+   "content": "画面从带“ever”标识的海边镜头切换为男子面部近景；下方再次出现字幕“所以除了我以外 谁也不能对这个女人指手画脚”。粉米色遮幅、泛白雾感及中央×形标记仍可见。",
+   "payload": "{\"importance\": 0.24}",
+   "obs_ids": [
+    11317
+   ],
+   "refs": [
+    {
+     "obs_id": 11317,
+     "exists": true,
+     "ts_wall": 1790905402.9243743,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:03f87c78787c018f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261002/094322.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 2698,
+   "msg_id": 2846,
+   "ts_start": 1790907524.6444285,
+   "ts_end": 1790907524.6444285,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "巡检轮播镜头切换",
+   "content": "画面从MV中蓝灰砖拱门前的浅色外套男子近景切换为白砖墙前戴墨镜、穿浅色长裙的女子；两侧黑边和中央×形标记仍可见。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    11421
+   ],
+   "refs": [
+    {
+     "obs_id": 11421,
+     "exists": true,
+     "ts_wall": 1790907524.6444285,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:07bc0ff870700f87",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261002/101844.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 2934,
+   "msg_id": 3095,
+   "ts_start": 1790913751.9493554,
+   "ts_end": 1790913751.9493554,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "巡检相邻帧中的镜头与姿态变化",
+   "content": "画面由蓝色拱形背景前男子近景切换为蓝灰砖拱廊中的较远景；男子穿浅色长外套，张口并抬手，中央×形标记与两侧黑边仍可见。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    11713
+   ],
+   "refs": [
+    {
+     "obs_id": 11713,
+     "exists": true,
+     "ts_wall": 1790913751.9493554,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7e78407801f07f87",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261002/120231.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 3027,
+   "msg_id": 3194,
+   "ts_start": 1790916259.9549193,
+   "ts_end": 1790916259.9549193,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "核对轮播画面变化",
+   "content": "画面仍为蓝色拱形背景前穿浅色外套的男子；相较上一帧，取景更宽，男子张口演唱，中央×形标记与黑边仍可见。",
+   "payload": "{\"importance\": 0.1}",
+   "obs_ids": [
+    11833
+   ],
+   "refs": [
+    {
+     "obs_id": 11833,
+     "exists": true,
+     "ts_wall": 1790916259.9549193,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:3c701ff07fb0400f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261002/124419.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 4228,
+   "msg_id": 4461,
+   "ts_start": 1790947525.7463496,
+   "ts_end": 1790947525.7463496,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "核对相邻画面的场景与人物姿态变化",
+   "content": "画面由海岸步道空景切至沙滩双人中远景：一名穿黑衣者站在坐着的浅色西装男子旁，向左伸出手臂；男子身旁可见一瓶饮料。左上保留“ever”字样，中央有×形标记，画面上下有浅色遮幅。",
+   "payload": null,
+   "obs_ids": [
+    13340
+   ],
+   "refs": [
+    {
+     "obs_id": 13340,
+     "exists": true,
+     "ts_wall": 1790947525.7463496,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:3c7c03fc07f80387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261002/212525.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 4338,
+   "msg_id": 4576,
+   "ts_start": 1790950617.1893616,
+   "ts_end": 1790950617.1893616,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "核对相邻帧的镜头切换与人物姿态",
+   "content": "画面从蓝色砖墙拱门前男子的中景切至格窗背景前红发男子的面部近景；男子对着下方麦克风微笑。中央×形标记和左侧黑边仍可见。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    13483
+   ],
+   "refs": [
+    {
+     "obs_id": 13483,
+     "exists": true,
+     "ts_wall": 1790950617.1893616,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c7870700ff87807",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261002/221657.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 4787,
+   "msg_id": 5050,
+   "ts_start": 1790962812.9593544,
+   "ts_end": 1790962812.9593544,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "核对镜头切换与画面标记",
+   "content": "画面从室内男女面部近景切至海岸道路：左侧可见海浪、岩岸与木栏步道，右侧有一辆白色敞篷车；左上仍有“ever”字样，中央可见×形标记，画面上下有浅色遮幅。",
+   "payload": "{\"importance\": 0.3}",
+   "obs_ids": [
+    14055
+   ],
+   "refs": [
+    {
+     "obs_id": 14055,
+     "exists": true,
+     "ts_wall": 1790962812.9593544,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:078ffc7c6003838f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261003/014012.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 5468,
+   "msg_id": 5769,
+   "ts_start": 1790980890.4773822,
+   "ts_end": 1790980890.4773822,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "核对相邻帧的镜头切换与人物姿势",
+   "content": "画面从格窗前红发男子及大厅人物切至蓝色拱形背景前的浅发男子单人全身镜头；男子屈膝伸臂摆出舞蹈姿势。左侧黑边、中央×形标记及重影模糊仍可见。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    14917
+   ],
+   "refs": [
+    {
+     "obs_id": 14917,
+     "exists": true,
+     "ts_wall": 1790980890.4773822,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:43e078781ff84387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261003/064130.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 6056,
+   "msg_id": 6389,
+   "ts_start": 1790996437.50336,
+   "ts_end": 1790996437.50336,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对视频相邻帧的镜头与画面痕迹",
+   "content": "镜头从海边黑衣女子与坐着的男子切至一名穿深色西装男子的面部近景；画面下方字幕为“所以除了我以外，谁也不能对这个女人指手画脚”。顶部可见“ever”，中央有×形标记，画面泛白并带上下浅色边带。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    15664
+   ],
+   "refs": [
+    {
+     "obs_id": 15664,
+     "exists": true,
+     "ts_wall": 1790996437.50336,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7003fc78787c038f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261003/110037.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 6112,
+   "msg_id": 6448,
+   "ts_start": 1790997886.3649676,
+   "ts_end": 1790997886.3649676,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的镜头与人物构图变化",
+   "content": "画面从蓝砖拱廊前的浅色外套男子切换为格窗前红发男子对着麦克风演唱的正面近景；左侧黑边、中央×形标记及泛白模糊仍可见。",
+   "payload": "{\"importance\": 0.35}",
+   "obs_ids": [
+    15732
+   ],
+   "refs": [
+    {
+     "obs_id": 15732,
+     "exists": true,
+     "ts_wall": 1790997886.3649676,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:3ff878780780780f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261003/112446.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 6666,
+   "msg_id": 7033,
+   "ts_start": 1791012597.5673494,
+   "ts_end": 1791012597.5673494,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "巡检相邻视频帧的镜头与画面痕迹",
+   "content": "镜头从穿深色西装男子近景切至蓝色砖墙前一名穿浅色外套的男子微笑近景；画面左侧有黑边，人物脸部附近可见中央×形标记。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    16441
+   ],
+   "refs": [
+    {
+     "obs_id": 16441,
+     "exists": true,
+     "ts_wall": 1791012597.5673494,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:1ff060707c784787",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261003/152957.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 7180,
+   "msg_id": 7575,
+   "ts_start": 1791026154.0813556,
+   "ts_end": 1791026154.0813556,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对视频镜头与画面痕迹",
+   "content": "画面切至海边：深色衣裤女子张开双臂站立，右侧浅色外套男子坐着回望。顶部有“ever”字样，画面中央有×形标记，并带上下浅色边带及泛白效果。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    17089
+   ],
+   "refs": [
+    {
+     "obs_id": 17089,
+     "exists": true,
+     "ts_wall": 1791026154.0813556,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7ffc6078407c7007",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261003/191554.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 7325,
+   "msg_id": 7728,
+   "ts_start": 1791030270.342357,
+   "ts_end": 1791030270.342357,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的镜头与人物构图变化",
+   "content": "画面从男女近景切至较宽的室内柜台场景：白衣女子站在左侧，西装男子站在中间，右前景新增一名背对镜头的马尾女子；顶部仍有“ever”，中央×形标记、泛白模糊及上下浅色边带持续可见。",
+   "payload": null,
+   "obs_ids": [
+    17283
+   ],
+   "refs": [
+    {
+     "obs_id": 17283,
+     "exists": true,
+     "ts_wall": 1791030270.342357,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c7843c1f803bc0f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261003/202430.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 7999,
+   "msg_id": 8438,
+   "ts_start": 1791048631.2113512,
+   "ts_end": 1791048631.2113512,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻帧的镜头切换与人物构图",
+   "content": "画面从蓝色砖拱门前的浅色外套男子切至白砖墙前的金发女子；女子戴墨镜、穿浅色无袖上衣和长裙，身体朝右转动。左侧黑边与画面中央的×形标记仍可见，画面略显模糊。",
+   "payload": "{\"importance\": 0.35}",
+   "obs_ids": [
+    18150
+   ],
+   "refs": [
+    {
+     "obs_id": 18150,
+     "exists": true,
+     "ts_wall": 1791048631.2113512,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:07bc0ff870704787",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261004/013031.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 8795,
+   "msg_id": 9278,
+   "ts_start": 1791069598.042374,
+   "ts_end": 1791069598.042374,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻帧的镜头切换与人物姿势",
+   "content": "镜头从室内西装男子看向前景女子，切至海边：黑衣女子站在画面中央张开双臂，右下方一名浅色上衣男子背对镜头坐着。顶部“ever”、中央×形标记、上下浅色边带及泛白模糊仍可见。",
+   "payload": "{\"importance\": 0.3}",
+   "obs_ids": [
+    19150
+   ],
+   "refs": [
+    {
+     "obs_id": 19150,
+     "exists": true,
+     "ts_wall": 1791069598.042374,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:61fc7c7c03838387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261004/071958.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 9206,
+   "msg_id": 9713,
+   "ts_start": 1791080768.9405506,
+   "ts_end": 1791080768.9405506,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对视频镜头与人物构图变化",
+   "content": "镜头从窗边双人近景切至海岸礁石场景：黑衣长发女子站立伸出一只手，右下方一名浅色上衣男子背对镜头蹲坐。顶部“ever”、中央×形标记、泛白模糊及上下浅色边带仍可见。",
+   "payload": "{\"importance\": 0.3}",
+   "obs_ids": [
+    19683
+   ],
+   "refs": [
+    {
+     "obs_id": 19683,
+     "exists": true,
+     "ts_wall": 1791080768.9405506,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:61fc7c7c03838387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261004/102608.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 10196,
+   "msg_id": 10756,
+   "ts_start": 1791107569.8544,
+   "ts_end": 1791107569.8544,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的镜头与人物构图变化",
+   "content": "镜头从蓝砖拱廊男子面部近景切至俯拍室内双人全景：穿棕色制服的男子与穿紫色裙装、白色披肩的女子分站推车两侧；画面顶部有“ever”，中央有×形标记，整体泛白并带浅色边带。",
+   "payload": "{\"importance\": 0.25}",
+   "obs_ids": [
+    20962
+   ],
+   "refs": [
+    {
+     "obs_id": 20962,
+     "exists": true,
+     "ts_wall": 1791107569.8544,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c01b8787c7c038f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261004/175249.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 10312,
+   "msg_id": 10879,
+   "ts_start": 1791110606.3213868,
+   "ts_end": 1791110606.3213868,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的镜头切换与人物构图",
+   "content": "镜头从敞篷车旁的双人画面切至男女近景：女子背对镜头，浅色外套男子俯身看向她；左上“ever”、中央×形标记及泛白效果仍可见。",
+   "payload": null,
+   "obs_ids": [
+    21107
+   ],
+   "refs": [
+    {
+     "obs_id": 21107,
+     "exists": true,
+     "ts_wall": 1791110606.3213868,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c7f7c784078400f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261004/184326.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 12647,
+   "msg_id": 13343,
+   "ts_start": 1791173299.6369224,
+   "ts_end": 1791173299.6369224,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻镜头的场景与人物表情",
+   "content": "画面从灰砖墙前戴墨镜的金发女子侧面近景切至蓝砖背景前浅色外套男子的近景；男子面带笑容。左右黑边与中央“×”标记仍可见。",
+   "payload": null,
+   "obs_ids": [
+    24093
+   ],
+   "refs": [
+    {
+     "obs_id": 24093,
+     "exists": true,
+     "ts_wall": 1791173299.6369224,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:3ff040707c784787",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261005/120819.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 12860,
+   "msg_id": 13568,
+   "ts_start": 1791179202.551357,
+   "ts_end": 1791179202.551357,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "逐帧比对人物姿势与视线",
+   "content": "画面为室内男女近景：左侧男子靠近穿白衣、绿色高领上衣的女子；女子抬眼看向男子，手靠近衣领。画面上方有“ever”字样，中央有“×”标记，整体泛白。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    24369
+   ],
+   "refs": [
+    {
+     "obs_id": 24369,
+     "exists": true,
+     "ts_wall": 1791179202.551357,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:03f87c03fc03f80f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261005/134642.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 12874,
+   "msg_id": 13582,
+   "ts_start": 1791179598.4713328,
+   "ts_end": 1791179598.4713328,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对室内男女镜头变化",
+   "content": "画面从浅色制服男子与紫色衣物、白色羽饰女子的室内近景，切至窗边男女特写：女子抬眼看向左侧穿深色西装的男子。画面仍有“ever”字样、中央“×”标记及泛白效果。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    24386
+   ],
+   "refs": [
+    {
+     "obs_id": 24386,
+     "exists": true,
+     "ts_wall": 1791179598.4713328,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:07fc7803bc607c0f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261005/135318.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 12940,
+   "msg_id": 13652,
+   "ts_start": 1791181218.8203945,
+   "ts_end": 1791181218.8203945,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻镜头中的人物视线与构图",
+   "content": "画面切至室内近景：深色头发男子身着浅色衣物，注视右侧前景女子；画面泛白，顶部有“ever”字样，中央有“×”标记。",
+   "payload": null,
+   "obs_ids": [
+    24465
+   ],
+   "refs": [
+    {
+     "obs_id": 24465,
+     "exists": true,
+     "ts_wall": 1791181218.8203945,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c07fc7c0383e00f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261005/142018.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 13367,
+   "msg_id": 14102,
+   "ts_start": 1791192461.152364,
+   "ts_end": 1791192461.152364,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的场景与构图变化",
+   "content": "画面从室内男女近景切至红色敞篷车内男子驾驶的正面近景；男子一手握方向盘，前方可见后视镜，画面带“ever”字样、中央“×”标记及浅色边带。",
+   "payload": "{\"importance\": 0.3}",
+   "obs_ids": [
+    25004
+   ],
+   "refs": [
+    {
+     "obs_id": 25004,
+     "exists": true,
+     "ts_wall": 1791192461.152364,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c3f7803c083f80f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261005/172741.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 14563,
+   "msg_id": 15364,
+   "ts_start": 1791224308.0123928,
+   "ts_end": 1791224308.0123928,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻画面中的人物动作与构图变化",
+   "content": "蓝色拱廊场景中，浅色外套男子由拱门旁站立变为居中较近景，双手交叠在胸前；后方人物与红色灯光不再明显。左侧黑边和中央“×”仍可见。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    26523
+   ],
+   "refs": [
+    {
+     "obs_id": 26523,
+     "exists": true,
+     "ts_wall": 1791224308.0123928,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c7043f807f87807",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261006/021828.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 14607,
+   "msg_id": 15411,
+   "ts_start": 1791225428.036407,
+   "ts_end": 1791225428.036407,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的场景与人物变化",
+   "content": "相较上一帧高窗大厅红发男子对麦克风表演，画面切至室外：戴墨镜、穿浅蓝衬衫的男子站在网状围栏前，右手抬至腰间；画面中央有“×”，左侧保留黑边，整体泛白模糊。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    26578
+   ],
+   "refs": [
+    {
+     "obs_id": 26578,
+     "exists": true,
+     "ts_wall": 1791225428.036407,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:707c0ff870780787",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261006/023708.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 14620,
+   "msg_id": 15425,
+   "ts_start": 1791225861.5713742,
+   "ts_end": 1791225861.5713742,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻画面的场景与景别变化",
+   "content": "画面切至高窗大厅中红发男子的面部近景，左下可见复古麦克风；与此前蓝砖拱廊男子画面不同。画面保留左侧黑边和中央“×”标记。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    26599
+   ],
+   "refs": [
+    {
+     "obs_id": 26599,
+     "exists": true,
+     "ts_wall": 1791225861.5713742,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:07f07e7070780f87",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261006/024421.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 14649,
+   "msg_id": 15455,
+   "ts_start": 1791226533.1953838,
+   "ts_end": 1791226533.1953838,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻画面的场景与构图变化",
+   "content": "画面从室内男女近景切至海岸步道远景：左侧可见海浪与礁石，木栏沿岸延伸，右侧有道路和蓝色立柱；顶部“ever”字样与中央“×”标记仍在，画面泛白。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    26632
+   ],
+   "refs": [
+    {
+     "obs_id": 26632,
+     "exists": true,
+     "ts_wall": 1791226533.1953838,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7087fc4383fc0387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261006/025533.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 15472,
+   "msg_id": 16323,
+   "ts_start": 1791249155.1943629,
+   "ts_end": 1791249155.1943629,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的景别与人物变化",
+   "content": "画面从蓝砖拱廊前浅色外套男子中景切为面部近景；男子张口，中央仍有“×”，左侧黑边仍在。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    27689
+   ],
+   "refs": [
+    {
+     "obs_id": 27689,
+     "exists": true,
+     "ts_wall": 1791249155.1943629,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:787c01f001f07f8f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261006/091235.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 15496,
+   "msg_id": 16348,
+   "ts_start": 1791249832.2284153,
+   "ts_end": 1791249832.2284153,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的场景与人物动作变化",
+   "content": "画面从室内男女近景切至蓝砖拱廊前浅色外套男子的中景；男子面向镜头张口并抬手做动作。左侧黑边与中央“×”标记仍可见。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    27722
+   ],
+   "refs": [
+    {
+     "obs_id": 27722,
+     "exists": true,
+     "ts_wall": 1791249832.2284153,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:5fc07c7878780387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261006/092352.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 15642,
+   "msg_id": 16503,
+   "ts_start": 1791253565.8149965,
+   "ts_end": 1791253565.8149965,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对视频镜头与画面变化",
+   "content": "画面切至铁丝网前戴墨镜男子的脸部近景，男子面向右侧、嘴微张；画面中央仍有“×”标记和左侧黑边，并出现横向错位条带。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    27902
+   ],
+   "refs": [
+    {
+     "obs_id": 27902,
+     "exists": true,
+     "ts_wall": 1791253565.8149965,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:77b8787000783f87",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261006/102605.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 17675,
+   "msg_id": 18647,
+   "ts_start": 1791310873.214398,
+   "ts_end": 1791310873.214398,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "逐帧比对视频镜头与构图变化",
+   "content": "画面从白天道路上的白色敞篷车远景切至海滩双人中景：女子背对镜头坐在前景，浅色西装男子坐在她身后；画面顶部有“ever”，中央有“×”，整体泛白并带浅色边框。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    30492
+   ],
+   "refs": [
+    {
+     "obs_id": 30492,
+     "exists": true,
+     "ts_wall": 1791310873.214398,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:787c03fc0e7c0387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261007/022113.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 17899,
+   "msg_id": 18883,
+   "ts_start": 1791316931.3473594,
+   "ts_end": 1791316931.3473594,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的场景与人物动作变化",
+   "content": "画面从灰砖墙前金发女子及地面人物影子切至蓝砖拱廊中的浅色外套男子；男子侧身屈膝，身体后仰并一手扶腰。中央有“×”，左侧有黑边，画面模糊并带重影。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    30783
+   ],
+   "refs": [
+    {
+     "obs_id": 30783,
+     "exists": true,
+     "ts_wall": 1791316931.3473594,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c7c3c7878700387",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261007/040211.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 18216,
+   "msg_id": 19218,
+   "ts_start": 1791325366.2193933,
+   "ts_end": 1791325366.2193933,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的场景与人物构图变化",
+   "content": "画面从户外浅色外套男子单人近景切至夜间敞篷车旁的双人镜头：长发女子与穿浅色外套的男子隔着车身相对注视；顶部有“ever”字样，中央保留“×”标记，画面泛白并带浅色边框。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    31182
+   ],
+   "refs": [
+    {
+     "obs_id": 31182,
+     "exists": true,
+     "ts_wall": 1791325366.2193933,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:67fc7c03c0fc008f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261007/062246.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 18527,
+   "msg_id": 19546,
+   "ts_start": 1791333454.7113898,
+   "ts_end": 1791333454.7113898,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比较相邻帧的场景与人物动作变化",
+   "content": "画面从地面上的人物阴影切至蓝砖拱门前的浅色外套男子中景；男子身体前倾并面向左侧。中央仍有“×”标记，左侧有黑边。",
+   "payload": "{\"importance\": 0.35}",
+   "obs_ids": [
+    31568
+   ],
+   "refs": [
+    {
+     "obs_id": 31568,
+     "exists": true,
+     "ts_wall": 1791333454.7113898,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:43f0787878700f8f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261007/083734.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 19251,
+   "msg_id": 20310,
+   "ts_start": 1791352734.810362,
+   "ts_end": 1791352734.810362,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻镜头的场景与构图变化",
+   "content": "画面从夜间敞篷车旁的双人镜头切至一名穿深色外套男子的正面面部特写；顶部仍有“ever”字样，中央有“×”标记，底部字幕为“所以除了我以外，谁也不能对这个女人指手画脚”。",
+   "payload": "{\"importance\": 0.35}",
+   "obs_ids": [
+    32486
+   ],
+   "refs": [
+    {
+     "obs_id": 32486,
+     "exists": true,
+     "ts_wall": 1791352734.810362,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:43987c78787c038f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261007/135854.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 19883,
+   "msg_id": 20977,
+   "ts_start": 1791369374.9123101,
+   "ts_end": 1791369374.9123101,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "逐帧比对镜头切换与人物姿势",
+   "content": "画面从吧台前手持布料的男子切换为高窗大厅中红发男子对着复古麦克风演唱；他双手抬在身前，画面中央仍有“×”标记，两侧为黑边。",
+   "payload": null,
+   "obs_ids": [
+    33274
+   ],
+   "refs": [
+    {
+     "obs_id": 33274,
+     "exists": true,
+     "ts_wall": 1791369374.9123101,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7e7003f87870078f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261007/183614.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 20065,
+   "msg_id": 21169,
+   "ts_start": 1791374095.8211174,
+   "ts_end": 1791374095.8211174,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的镜头与人物互动变化",
+   "content": "画面从明亮走廊中两人围着蛋糕推车的俯拍远景切至男女近景：穿白衣男子低头看向右下方的女子，女子仰头看他，一只手抬在两人之间；画面仍有“ever”字样、中央“×”标记及浅色边框。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    33503
+   ],
+   "refs": [
+    {
+     "obs_id": 33503,
+     "exists": true,
+     "ts_wall": 1791374095.8211174,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:03fc0383fc03fc0f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261007/195455.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 20630,
+   "msg_id": 21765,
+   "ts_start": 1791389211.3364947,
+   "ts_end": 1791389211.3364947,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的场景与构图变化",
+   "content": "画面从铁丝网前戴墨镜男子近景切至吧台中景：一名穿白衬衫、红色背带的男子手持酒杯，身前有重影；左侧可见立柱，右侧摆有玻璃杯。两侧黑边和中央“×”标记仍在。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    34220
+   ],
+   "refs": [
+    {
+     "obs_id": 34220,
+     "exists": true,
+     "ts_wall": 1791389211.3364947,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:0780787878783f8f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261008/000651.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 21509,
+   "msg_id": 22692,
+   "ts_start": 1791412520.994699,
+   "ts_end": 1791412520.994699,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频画面的镜头与构图变化",
+   "content": "画面从蓝色拱门前的浅色外套男子切至红发男子对着复古麦克风的面部近景；左侧黑边与中央“×”标记仍可见。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    35340
+   ],
+   "refs": [
+    {
+     "obs_id": 35340,
+     "exists": true,
+     "ts_wall": 1791412520.994699,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:4f907e7840407f8f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261008/063520.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 22258,
+   "msg_id": 23482,
+   "ts_start": 1791433198.427361,
+   "ts_end": 1791433198.427361,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比较相邻帧的人物姿势变化",
+   "content": "画面仍为蓝砖拱廊前的浅色外套男子全身镜头；相较前帧，他由单膝下蹲、双臂向左伸展变为身体前倾，一臂垂向身侧、另一臂收在身前。左侧黑边与中央“×”标记仍在。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    36307
+   ],
+   "refs": [
+    {
+     "obs_id": 36307,
+     "exists": true,
+     "ts_wall": 1791433198.427361,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7e007e7078784787",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261008/121958.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 22684,
+   "msg_id": 23932,
+   "ts_start": 1791894897.0486004,
+   "ts_end": 1791894897.0486004,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比较相邻帧的人物姿势变化",
+   "content": "画面仍为高窗大厅中红发男子对复古麦克风演唱；相较上一帧，构图收近至男子上身与腰部，手势变为双手靠近腰侧，中央“×”标记和两侧黑边仍在。",
+   "payload": null,
+   "obs_ids": [
+    36916
+   ],
+   "refs": [
+    {
+     "obs_id": 36916,
+     "exists": true,
+     "ts_wall": 1791894897.0486004,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:07807c787c704f8f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261013/203457.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 23271,
+   "msg_id": 24551,
+   "ts_start": 1791911456.485566,
+   "ts_end": 1791911456.485566,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比较相邻视频镜头的场景、人物姿势与构图变化",
+   "content": "画面从蓝砖拱廊前男子单人屈膝张臂的舞蹈全景切至高窗大厅红发男子对复古麦克风演唱的中景；男子一手抬起，中央“×”标记与左侧黑边仍可见，画面泛白模糊。",
+   "payload": "{\"importance\": 0.3}",
+   "obs_ids": [
+    37666
+   ],
+   "refs": [
+    {
+     "obs_id": 37666,
+     "exists": true,
+     "ts_wall": 1791911456.485566,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7e6043f87870078f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261014/011056.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 23404,
+   "msg_id": 24692,
+   "ts_start": 1791914851.0974867,
+   "ts_end": 1791914851.0974867,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比较相邻视频画面的景别与人物姿势变化",
+   "content": "镜头切为男女近景：左侧男子贴近女子，女子抬眼看向他，一只手靠在绿色衣领处；画面仍有“ever”字样、中央“×”标记及泛白效果。",
+   "payload": null,
+   "obs_ids": [
+    37832
+   ],
+   "refs": [
+    {
+     "obs_id": 37832,
+     "exists": true,
+     "ts_wall": 1791914851.0974867,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:03fc38787c03f80f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261014/020731.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 23598,
+   "msg_id": 24895,
+   "ts_start": 1791920193.1695857,
+   "ts_end": 1791920193.1695857,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比较相邻镜头的人物构图与场景变化",
+   "content": "画面由浅色制服男子与紫衣女子、中央骷髅状叠影的镜头切至室内近景：穿白色毛领外套的女子仰头看向左侧男子，男子仅部分入画；保留“ever”字样和中央“×”标记，画面泛白。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    38083
+   ],
+   "refs": [
+    {
+     "obs_id": 38083,
+     "exists": true,
+     "ts_wall": 1791920193.1695857,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:7c41fc0383f8780f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261014/033633.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 23927,
+   "msg_id": 25243,
+   "ts_start": 1791928832.1336222,
+   "ts_end": 1791928832.1336222,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的场景与人物变化",
+   "content": "画面从吧台前穿白衬衫、红色背带的男子切至高窗大厅：红发男子穿深色外套和条纹上衣，站在复古麦克风前；中央“×”标记、两侧黑边及泛白模糊仍可见。",
+   "payload": "{\"importance\": 0.25}",
+   "obs_ids": [
+    38497
+   ],
+   "refs": [
+    {
+     "obs_id": 38497,
+     "exists": true,
+     "ts_wall": 1791928832.1336222,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:5fc078787870078f",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261014/060032.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  },
+  {
+   "rank_in_pop": 23977,
+   "msg_id": 25295,
+   "ts_start": 1792026467.485584,
+   "ts_end": 1792026467.485584,
+   "inverted_window": false,
+   "type": "diff",
+   "source": "vlm",
+   "intent": "比对相邻视频帧的景别与构图变化",
+   "content": "画面仍是蓝砖拱廊前的浅色外套男子，景别扩大至中远景，双手垂在腰侧；背景可见多个拱门，中央有“×”标记，左侧保留黑边。",
+   "payload": "{\"importance\": 0.2}",
+   "obs_ids": [
+    41673
+   ],
+   "refs": [
+    {
+     "obs_id": 41673,
+     "exists": true,
+     "ts_wall": 1792026467.485584,
+     "in_window": true,
+     "delta_to_start": 0.0,
+     "delta_to_end": 0.0,
+     "kind": "screen.notable",
+     "key": "phash:3c7843f807f87807",
+     "content": null,
+     "ref": "/home/z/backseat-data/frames/20261015/090747.jpg",
+     "meta": "{}",
+     "file_exists": true
+    }
+   ]
+  }
+ ]
+}
