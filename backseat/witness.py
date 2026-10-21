@@ -13,8 +13,9 @@
 2. 对比/过渡句（`SWITCH_RE` 的闭集：`从X切至Y`、`切换为`、`相较上一帧`、`仍为`…）
    把被比的那一端（基帧）并进本行 obs_ids：本行自带过渡的两端；
 3. 通行称呼（`浅色外套男子`）只认本轮点名了的那张图，点不出来就拒绝，不静默沿用——
-   册子累计（`state["epithets"]` 记最近 EPITHET_MEMORY 个词面），隔几行再写的称呼
-   同样被拒；保留下来的点名记进 `payload.cast`，使"这个称呼点了哪一帧"事后可判。
+   册子放在库里（`epithets` 表，主键是归一化后的词面，不封顶、跨重启仍在），隔几行再写的
+   称呼同样被拒；被拒的是**整行**（正文不改写，名字的边界在文本里不可知），保留下来的
+   点名记进 `payload.cast`，使"这个称呼点了哪一帧"事后可判。
 """
 
 from __future__ import annotations
@@ -85,8 +86,12 @@ SINCE_SLACK = 2.0
 PERSON_NOUNS = ("男子", "女子", "男人", "女人", "男孩", "女孩", "男生", "女生", "小孩")
 PERSON_RE = re.compile("|".join(PERSON_NOUNS))
 EPITHET_PREFIX = (2, 6)
-# 称呼册的容量上限：常驻 state，跟着库活很久，故必须有界；超出先忘最久没用过的词面。
-EPITHET_MEMORY = 200
+# 称呼册：库里的 `epithets` 表，主键是归一化后的词面（`epithet_forms` 的产物）。
+# 封顶会静默沿用（预演：一个名字生 5 个变体，200 个词面很早就满，被忘掉的词面再写
+# 就是静默沿用），故不封顶；每行只按本行的几个词面做主键查询/插入，不随册子变大变慢。
+EPITHET_TABLE = "epithets"
+EPITHET_SCHEMA = (f"CREATE TABLE IF NOT EXISTS {EPITHET_TABLE} ("
+                  "form TEXT PRIMARY KEY, first_wall REAL, last_wall REAL)")
 
 
 def epithet_forms(text: str) -> list[str]:
@@ -99,17 +104,6 @@ def epithet_forms(text: str) -> list[str]:
             if len(chars) >= k:
                 forms.add(chars[-k:] + m.group(0))
     return sorted(forms, key=len, reverse=True)
-
-
-def remember_epithets(known: list[str], kept: list[str]) -> list[str]:
-    """累计册：本次留下的词面排到最末，旧的保留，总数封顶 EPITHET_MEMORY。
-
-    只记上一行时，隔一行再写的称呼就从册子里掉出去了（普查：沿用里绝大多数是跨行沿用），
-    于是"没点名就沿用"拦不住。累计是修这一条；有界是必须的，否则 state 随天增长。
-    """
-    fresh = set(kept)
-    merged = [e for e in known if e not in fresh] + list(dict.fromkeys(kept))
-    return merged[-EPITHET_MEMORY:]
 
 
 def parse_stamp(text, ref_wall: float) -> float | None:
@@ -174,6 +168,8 @@ class Witness:
         self.cfg = cfg
         self.log = log
         self.kb = KB(store)
+        store.conn.execute(EPITHET_SCHEMA)  # 称呼册表：库自足，重启/换进程都在
+        store.conn.commit()
         self._err_log_at: dict[str, float] = {}
         self.stats = {"calls": 0, "parse_fail": 0, "discarded": 0, "anchors": 0}
         self._system = SYSTEM_PROMPT
@@ -293,28 +289,60 @@ class Witness:
             tuple(ids)).fetchone()
         return [int(row["id"])] if row else []
 
-    def _settle_epithets(self, content: str, mini: dict,
-                         n_frames: int) -> tuple[str | None, list[str], list[dict]]:
-        """通行称呼必须点名本轮某张图，点不出来就拒绝。
+    def _known_epithets(self, forms: list[str]) -> set[str]:
+        """本行的这几个词面里，哪些已经在册里。按主键查，只与本行词面数有关。"""
+        if not forms:
+            return set()
+        qs = ",".join("?" * len(forms))
+        rows = self.store.conn.execute(
+            f"SELECT form FROM {EPITHET_TABLE} WHERE form IN ({qs})", tuple(forms)).fetchall()
+        return {r["form"] for r in rows}
 
-        `浅色外套男子` 这类站立描述只允许来自本行引用的帧。能留下的情形只有三种：
-        cast 里点名了本轮第 n 张图（1≤n≤本轮图数）；本轮首次出现（册里没有，
-        故它只可能来自本帧）；本轮一张图都没有时——那就没有任何情形，全部拒绝。
+    def _remember_epithets(self, forms: list[str], wall: float) -> None:
+        """把本行的词面写进册（已在册的只推进 last_wall）。幂等：同一行重写也一样。"""
+        if not forms:
+            return
+        self.store.conn.executemany(
+            f"INSERT INTO {EPITHET_TABLE}(form,first_wall,last_wall) VALUES(?,?,?) "
+            "ON CONFLICT(form) DO UPDATE SET last_wall=excluded.last_wall",
+            [(f, wall, wall) for f in forms])
+        self.store.conn.commit()
 
-        册里记过的称呼而本行又写出来的，本模块无从复核像素，所以拒绝而不是静默沿用：
-        正文里删掉它、payload 记 epithet_refused、stats 计数、日志留一行。册是累计的
-        （`state["epithets"]`，最近 EPITHET_MEMORY 个词面），所以隔几行再写的同一个称呼
-        就算中间那几行再也没提过它，也照样被拒。删空的整行不落库（落一行空话比不落更糟）。
+    def _settle_epithets(self, content: str, mini: dict, n_frames: int,
+                         ref_wall: float) -> tuple[str | None, list[str], list[dict]]:
+        """通行称呼必须点名本轮某张图；被沿用的而没点名 → **整行**拒收。
 
-        保留下来的点名（图号在本轮范围内、且名字仍在正文里）原样返回，由 `_payload`
-        记进 `payload.cast`：事后判 C2 时，"这个沿用带没带点名"就看得到。
+        `浅色外套男子` 这类站立描述只允许来自本行引用的帧。能留下的情形只有两种：
+        cast 里点名了本轮第 n 张图（1≤n≤本轮图数）；册里没有这个词面（本轮首次出现，
+        故它只可能来自本帧）。首次出现放行的提前是**本轮至少有一张图**：n_frames=0 时
+        任何词面都没有依据（点名也验不了），整行拒收——这不是首次出现的例外。
+
+        册里记过的词面而本行又写出来的，本模块无从复核像素，所以拒绝而不是静默沿用。
+        拒的是**整行**：名字的边界在文本里不可知（`epithet_forms` 取名词前连续汉字的后缀，
+        最长变体会把邻词一起吞掉，预演里就吃掉了 `切换为` 这类标记词），所以不做删名字的
+        文本手术——正文一个字节也不动，内容连同依据一起不落库（`content=None`），
+        payload 来不及长，拒绝靠 `stats["epithet_refused"]` 与日志留痕。
+
+        册是库里的 `epithets` 表，跨进程/重启都在，不封顶：被拒的词面也照样入册，所以
+        隔几行再写的同一个称呼照样被拒，被忘掉这种情况不存在。
+
+        保留下来的点名（图号在本轮范围内、且名字在正文里）原样返回，由 `_payload`
+        记进 `payload.cast`：事后判 C2 时，“这个沿用带没带点名”就看得到。
 
         机械看得到的只有名词尾（男子/女子/…），所以登记与比对都以名词前的后缀变体为准：
-        模型不填 cast 时机制照样生效，代价是同一人反复出现时称呼会被反复拒绝。
-        返回 (content 或 None, 被拒称呼, 保留的点名)。
+        模型不填 cast 时机制照样生效，代价是同一人反复出现时整行被反复拒收。
+        返回 (content 或 None, 被拒词面, 保留的点名)。
         """
-        known = [e for e in self.store.get_state("epithets", []) if isinstance(e, str)]
-        attributed, declared = [], []
+        forms = epithet_forms(content)
+        known = self._known_epithets(forms)  # 先查再记：本行自己写下的词面不算“之前见过”
+        self._remember_epithets(forms, ref_wall)  # 首次出现的、被拒的都入册
+        if n_frames <= 0 and forms:
+            # 本轮一张图都没有：任何人物称呼都没有依据，“首次出现只可能来自本帧”这句话
+            # 不成立（提前是至少有一张图），所以这里不是“首次出现就放行”的例外。
+            self.stats["epithet_refused"] = self.stats.get("epithet_refused", 0) + len(forms)
+            self._log_err(f"[witness] 整行拒收：本轮无帧，人物称呼无依据 {forms}")
+            return None, forms, []
+        attributed = []
         cast = mini.get("cast")
         for item in cast if isinstance(cast, list) else []:
             if not isinstance(item, dict):
@@ -322,47 +350,30 @@ class Witness:
             name, frame = item.get("name"), item.get("frame")
             if not isinstance(name, str) or not name:
                 continue
-            declared.append(name)
             if isinstance(frame, int) and 1 <= frame <= n_frames:
                 attributed.append((name, frame))
 
         def attributed_ok(form: str) -> bool:
             return any(form in n or n in form for n, _ in attributed)
 
-        refused, out = [], content
-        if n_frames <= 0:  # 无帧可看：任何人物称呼都没有依据
-            for form in epithet_forms(out):
-                if form in out:
-                    out = out.replace(form, "")
-                    refused.append(form)
-        else:
-            for form in sorted(known, key=len, reverse=True):
-                if form in out and not attributed_ok(form):
-                    out = out.replace(form, "")
-                    refused.append(form)
+        refused = [f for f in forms if f in known and not attributed_ok(f)]
         if refused:
-            out = re.sub(r"[，、,]{2,}", "，", out)
-            out = re.sub(r"^[，、,。;；\s]+", "", out).strip()
-            out = re.sub(r"[，、,;；\s]+$", "", out)
             self.stats["epithet_refused"] = self.stats.get("epithet_refused", 0) + len(refused)
-            self._log_err(f"[witness] 拒绝越帧称呼 {refused}（本轮未点名任何一图）")
-        kept = [n for n in declared if n in out] + epithet_forms(out)
-        self.store.set_state("epithets", remember_epithets(known, kept))
-        retained = [{"name": n, "frame": f} for n, f in attributed if n in out]
-        if not out.strip():
-            return None, refused, retained
-        return out, refused, retained
+            self._log_err(f"[witness] 整行拒收：沿用称呼未点名本轮任何一图 {refused}")
+            return None, refused, []
+        retained = [{"name": n, "frame": f} for n, f in attributed if n in content]
+        return content, [], retained
 
     def _row_basis(self, mini: dict, content: str, frame_ids: list[int],
                    ref_wall: float, n_frames: int):
         """一行落库前的证据基：称呼去留 → 对比句基帧并入 → 窗口取引用集合极值。
 
-        返回 (content|None, obs_ids, ts_start, ts_end, 基帧, 被拒称呼, 保留的点名)；
+        返回 (content|None, obs_ids, ts_start, ts_end, 基帧, 被拒词面, 保留的点名)；
         content 为 None 时——
-        表示整行拒绝（只剩被拒称呼与计数），调用方丢弃本行。
+        表示整行拒收（沿用的称呼没点名本轮任何一图），调用方丢弃本行；正文未被改写。
         """
-        raw = content  # 对比句按模型写下的原话判：称呼被删掉也不该让过渡句消失
-        content, refused, retained = self._settle_epithets(content, mini, n_frames)
+        raw = content  # 对比句按模型写下的原话判：称呼被拒不该让过渡句消失
+        content, refused, retained = self._settle_epithets(content, mini, n_frames, ref_wall)
         if content is None:
             return None, [], ref_wall, ref_wall, [], refused, retained
         base = self._switch_base(mini, raw, ref_wall)
@@ -432,7 +443,7 @@ class Witness:
             [int(obs_row["id"])], obs_row["ts_wall"], 1 if obs_row["ref"] else 0)
         if content is None:
             self.stats["discarded"] += 1
-            self.log(f"[witness] 拒绝落行（称呼删空）：{fmt_wall(obs_row['ts_wall'])} "
+            self.log(f"[witness] 整行拒收（沿用称呼未点名）：{fmt_wall(obs_row['ts_wall'])} "
                      f"refused={refused}")
             return None
         payload = self._payload(mini, base, refused, retained)
@@ -487,7 +498,7 @@ class Witness:
             sum(1 for r in rows if r["ref"]))
         if content is None:
             self.stats["discarded"] += len(rows)
-            self.log(f"[witness] 拒绝落行（称呼删空）丢弃 {len(rows)} 帧：refused={refused}")
+            self.log(f"[witness] 整行拒收（沿用称呼未点名）丢弃 {len(rows)} 帧：refused={refused}")
             return None
         payload = self._payload(mini, base, refused, retained)
         mid = self._write_small(mini, content, ids, ts_start, ts_end, payload)
