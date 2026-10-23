@@ -20,7 +20,7 @@ for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tes
 - 实跑之前先预演：`scripts/rehearse_writes.py` 把冻结快照的 small 正文按现在的写入规则重写进临时库，再对它普查（不发模型请求）；称呼册要先用 `scripts/backfill_epithets.py` 拿历史回填。
 - 判定程序与分子分母住 [`docs/SCHEMA.md`](docs/SCHEMA.md) 的「门槛判定程序」；阈值住 ROADMAP 的门槛行；不要在两处写同一个数。
 - 运行、日志、读数的日常操作住 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)。
-- 花销：本地 CPU 是 `idle-compute`，可以直接跑；模型端点 `127.0.0.1:4000` 是 `resource`，不在本目录手里——它停了就报上去，别本机替它编一个模型。
+- 花销：本地 CPU 是 `idle-compute`，可以直接跑；模型端点 `127.0.0.1:4000` 是 `resource`——它不在本目录手里，但**掉了自己起**：`~/.venv/bin/litellm --config ~/litellm.yml`（后台、日志进自己的 run.log），不把它当 person 的待办再发一封信。断言端点先读端口（`ss -ltnp | grep :4000`、`curl /health/liveliness`），不读进程表；端点活着也不得本机替它编一个模型。
 
 ## 东西在哪
 
@@ -34,6 +34,6 @@ for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tes
 
 ## 哪些文档不是当前的
 
-- `docs/PAIN.md` 的「证据」节：计数停在 2026-10-19（管线停在那天），不是当下的库；要新数就跑 RUNBOOK 验证节里的查询。
+- `docs/PAIN.md` 的「证据」节：数字是 2026-10-23T12:21Z 的实时库读数，随采集漂；引用前按 RUNBOOK 验证节的查询重读一次，别把旧数当当下的库。
 - `docs/ROADMAP.md` 的「状态（当前事实）」表里的确认门列：Release 2.0 的确认门有一半要用户亲手做（实跑一天、callback 演示、弹幕打分、全新机器安装），别把它读成"没人管"。
 - `docs/WALKTHROUGH.md` 是产品走查脚本，不是规格；规格住 `docs/DESIGN.md` 与 `docs/SCHEMA.md`。

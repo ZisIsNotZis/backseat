@@ -16,13 +16,14 @@
 
 ## 证据（本机现状）
 
-- observations 42,396 条，sensor/kind 只有 screen/screen.notable 一种。【实测：sqlite3 -readonly ~/backseat-data/backseat.db "select sensor,kind,count(*) from observations group by 1,2"】
-- messages 24,551 small / 1,227 medium / 122 big，expressions 366 条 shown。【实测：按 level 与 status 分组计数】
+- observations 43,026 条，sensor/kind 只有 screen/screen.notable 一种。【实测 2026-10-23T12:21Z：`sqlite3 -readonly ~/backseat-data/backseat.db "select sensor,kind,count(*) from observations group by 1,2"`】
+- messages 24,701 small / 1,235 medium / 123 big，expressions 366 条 shown。【实测 2026-10-23T12:21Z：按 level 与 status 分组计数】
 - 只有一条取证通道的数据，因此没有任何跨域对照，"理解对了"和"这条通道恰好够用"无法区分。【由前两条实测推出】
 - 用户全天在 agent 会话里，人类行为因此稀疏，均匀采样必然大量采到无人的画面。【来源：用户自述，与 screen-only 数据一致】
-- 数据流是单点依赖：见证游标停在 42,395 而 observations 已达 42,396，日志原因是模型端点 Connection refused。【实测：state.witness_cursor 与 count(observations)；~/backseat-data/run.log】
+- 数据流单点依赖模型端点，曾经断过一行：2026-10-19 快照里游标停在 42,395 而 observations 已到 42,396，日志给的原因是端点 Connection refused。这条现在不成立——2026-10-23T12:21Z 读实时库，`witness_cursor` 43,026 = `count(observations)` 43,026（积压 0），端点在 `127.0.0.1:4000` 上自 2026-10-19 20:36:49 起一直在听（`ps -o lstart= -p 1056812`、`ss -ltnp | grep :4000`、`curl /health/liveliness` → 200）。当时把它读成“daemon 从 10-19 起就停了”是读错了表面：端点由用户会话启动、不由本项目托管，主机进程表里看不见它，而“端点可不可达”只在端口上能回答。
+- 采集停过一段：实时库最后一条观察到 2026-10-22 02:14:42（本地），此后没再落行（快照 `2026-10-21-run2` 与实时库同为 43,026 行）。停的是采集，不是端点。
 - 采集覆盖面还停在一个传感器上，GitHub 只是外部 observe 的一条通道，不是主观察路径。【来源：用户自述，与 screen-only 数据一致】
-- 数据库 25.1MB 且 state 无 evict 键，说明存储预算从未触发过驱逐。【实测：ls -l ~/backseat-data/backseat.db 与 state 键集】
+- 数据库 28,135,424 字节（26.8 MiB）且 state 无 evict 键，说明存储预算从未触发过驱逐。【实测 2026-10-23T12:21Z：`ls -l ~/backseat-data/backseat.db` 与 state 键集：anchor / last_digest / persona_cursor / session_start_wall / user_model / witness_cursor】
 
 ## 非目标（不打算解决的痛）
 

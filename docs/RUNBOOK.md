@@ -7,7 +7,7 @@
 | 组件 | 说明 |
 |---|---|
 | `python3 -m backseat` | 主守护进程：采集 → 见证 → 压缩 → KB → 人格 → 弹幕 |
-| LiteLLM 代理 | `http://127.0.0.1:4000`（由用户会话持有，**非本项目托管**）。需 `LITELLM_BASE_URL` + `LITELLM_API_KEY` 环境变量 |
+| LiteLLM 代理 | `http://127.0.0.1:4000`（由用户会话持有，**非本项目托管**，掉了自己起，见验证节）。需 `LITELLM_BASE_URL` + `LITELLM_API_KEY` 环境变量 |
 | 帧源 | 真实桌面（`$DISPLAY`）或合成源（Xvfb `:99` + mpv 循环播放视频） |
 | 弹幕出口 | 由守护进程按需拉起 `python3 -m backseat.outlets.danmaku_engine`（stdin JSON-lines，PyQt5，点击穿透） |
 
@@ -73,8 +73,30 @@ sqlite3 -readonly ~/backseat-data/backseat.db \
 健康标准：`witness_cursor == count(observations)`（无积压）；`抓帧失败` 不持续增长；
 `run.log` 无重复错误刷屏（同类错误 5 分钟最多一条）。称呼机制的模型侧读数只看一个计数：
 `run.log` 里 `整行拒收` 的行数 / 该时段写入的 small 行数——模型没在 `cast` 里点名本轮某张图的行，
-整行不落库（正文不改写）。轨迹里见证调用 24,553 次、带 `cast` 的 0 次（`grep -h -o '"purpose": "witness[^"]*"' ~/backseat-data/trajectory/*.jsonl | wc -l`），所以这个数现在会很大；
-它高是提示词没教会 `cast`，提词器是杠杆，规则只看依据在不在行内。
+整行不落库（正文不改写）。全部轨迹里见证调用 25,052 次、带 `cast` 的 478 次，全部落在第二轮（2026-10-21/22）；
+那个 0 不是模型不填，是查法查不到：`response` 是转义过的 JSON 字符串，`grep -c '"cast"'` 永远命中不了，
+要用 `grep -c '\\"cast\\"'` 或 python 解一下。
+
+### 端点（`127.0.0.1:4000`）的读数与自起
+
+断言“端点在不在”只读端口，不读进程表（它由用户会话启动，主机视角看不见不代表不在）：
+
+```sh
+ss -ltnp | grep :4000                                    # 哪个 pid 在听
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4000/health/liveliness   # 200 = 活
+ps -o lstart=,etime= -p <上面那个 pid>                    # 从什么时候起就在听
+```
+
+不在就自己起，不当成 person 的待办：
+
+```sh
+nohup ~/.venv/bin/litellm --config ~/litellm.yml >> ~/backseat-data/run.log 2>&1 &
+ss -ltnp | grep :4000        # 起来之后再读一次，别提前宣布
+```
+
+读数带三样才能引用：**读到的时刻**、**读的哪一面**（端口 / 进程 / 容器 / 服务）、**复算命令**。
+同一类错误以前犯过两次：端点被读成“从 10-19 起就停了”（实际自 2026-10-19 20:36:49 一直在听），
+以及 flashdb 那条同形状的读法。
 
 ## 生产判定人口（M0′ 的一次实跑）
 
@@ -124,11 +146,17 @@ ls ~/backseat-data/run2.DONE || tail -f ~/backseat-data/run2.driver.log
 | 入选帧 / 采样 | `run.log` 末行统计 | 39 / 124 |
 | 整行拒收 | `grep -c "整行拒收：" ~/backseat-data/run.log` | 24（其中 22 次丢弃 1 帧；不带冒号的写法数出 48，把那行总结与「丢弃」行算了两遍） |
 | 见证调用与花销 | `trajectory/2026-10-21.jsonl` 的 usage 求和 | 32 次、285,239 in（209,024 走缓存）/ 10,999 out = $0.037 |
-| 游标积压 | `observations` 42,436 − `witness_cursor` 42,436 | 0 |
+| 游标积压 | 快照 `2026-10-21` 里 `count(observations)` 42,436 − `witness_cursor` 42,436 | 0 |
 
 判据是“24 次拒收 : 8 行落库”，即约 3:1；32 次见证调用里只有 1 行带 `cast`——**拒收率高在提示词不在规则**，和这条规则要的“依据在不在行内”无关。≥200 行、B 抽样与拒收率的正式读数还是空的。
 
 `--since-msg-id` 一律取**旧**冻结快照的 max small id（当前 25,900），不要换成"今天"：它划的是修复前后的缝，不是日期。判定人口非空之前退出码是 2（不能确立），不是通过。
+
+### 第二轮的读数（已结束：`reason=stalled`，2026-10-21T18:15:07Z）
+
+判据全部在产物里，不复述表：`~/backseat-data/run2.DONE`（行数、普查退出码、花销）、`~/backseat-data/run2.census.json`（逐项分母/分子/缺陷行）、`~/backseat-data/run2.driver.log`（过程）。一句话：判定人口（`--since-msg-id 25908`）落 small **142 行**（不到 200）、普查 **退出 1**、缺陷行 `[26028]`、476 次调用 / $0.5655。
+
+那一行缺陷的机理写在 ROADMAP 的 M0′ 状态行（两套归一化：放行侧比原始 `cast` 名字的子串，记录侧要求逐字出现）；复算它只需快照与 `trajectory/2026-10-22.jsonl` 第 201 行，不需要再跑模型。
 
 ## 数据与日志位置
 
@@ -154,7 +182,7 @@ ls ~/backseat-data/run2.DONE || tail -f ~/backseat-data/run2.driver.log
 ## 已知坑（踩过的）
 
 1. **litellm yml 是多会话共享文件**：并行 agent 改动可能破坏结构（缺 `model_name` → 代理启动即崩）或被还原。改前备份，改后用 `python3 -c "import yaml; yaml.safe_load(open('/home/z/litellm.yml'))"` 验证。
-2. **代理不由本项目托管**：机器重启后可能不在（当前由用户会话启动）。本项目只依赖 `127.0.0.1:4000` 可达。
+2. **代理不由本项目托管**：机器重启后可能不在（当前由用户会话启动）。本项目只依赖 `127.0.0.1:4000` 可达；不在就按上面的自起命令拉起来，不是待办。
 3. **后台任务输出有 20MB 上限**：守护进程必须把日志重定向到文件（`scripts/dev-up.sh` 已做）。
 4. **mpv 状态行刷爆任务输出**：合成源必须 `--no-terminal` 且重定向到 `/dev/null`。
 5. **会话锁屏后抓屏全黑**：真实桌面锁屏时无有效数据（黑帧被 `<40KB` 预过滤跳过）；此时用合成源。
