@@ -5,10 +5,11 @@
 ## 怎么开始
 
 1. 读 [`docs/NODE.md`](docs/NODE.md)：这个节点为什么存在、roadmap 上有哪些工作包、当前决定过什么。
-2. 读 [`docs/ROADMAP.md`](docs/ROADMAP.md) 的 **M0′** 一节：要交的里程碑、门槛、判定人口、状态行。
-3. 读 `inbox/` 与 `mail/`（若有）：每封信是 `kind/from/to/spend` 开头，读完先落地到 `docs/`，再删信、再提交。
+2. 读 [`docs/ROADMAP.md`](docs/ROADMAP.md) 的 **M0′** 一节：要交的里程碑、门槛、判定人口、状态行。（2026-10-23 起靶子已换成 **M0″**：题面→外部材料→评论，见该节开头的方向变更块。）
+3. 碰传感器/换终端/改采集之前先读 [`docs/SENSORS.md`](docs/SENSORS.md)：那里面是“这条通道到底能拿到什么”的读数，不是设计愿望。
+4. 读 `inbox/` 与 `mail/`（若有）：每封信是 `kind/from/to/spend` 开头，读完先落地到 `docs/`，再删信、再提交。
    收信与发信都走 `inbox/`：上一层的契约落在 `inbox/<日期>-*.md`，我给 root 的报告也写在那里（`to: root`），发完不留在 `mail/`。
-4. 跑一遍测试（14 个文件，约 20 秒）：
+5. 跑一遍测试（14 个文件，约 20 秒）：
 
 ```sh
 for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py tests/test_rehearse_writes.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
@@ -31,6 +32,8 @@ for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tes
 | 测试 | `tests/`（每个文件独立可跑，末尾打印 `ALL PASS（N 条断言）`） |
 | 数据 | `~/backseat-data/backseat.db`、`frames/`、`trajectory/`、`snapshots/<UTC 日期>/` |
 | 独立评审与本草稿 | `.scratch/d1-b-independent/`（评审 + 抽样 + 裁剪图，已提交） |
+| 传感器能给什么（实测） | `docs/SENSORS.md` + `scripts/atspi_probe.py`（只数接口与字符数，不打印正文） |
+| 关于这个人的一切 | `docs/PEOPLE.md`（唯一一份；别处只写指向它的路径） |
 
 ## 哪些文档不是当前的
 

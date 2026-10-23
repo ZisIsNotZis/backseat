@@ -10,6 +10,8 @@
 
 本次要交的里程碑只有一个，住在 [ROADMAP.md](ROADMAP.md)：**M0′ 数据基座与可评测性**。
 
+> **2026-10-23 重新瞄准**：M0′ 的靶子换成 **M0″（题面→外部材料→评论）**，M0′ 已交的东西与已得的读数不删、不改写，降为见证层的性质。来源：用户自述 2026-10-23（方向，不是缺陷清单），记在 [PEOPLE.md](PEOPLE.md)；传感器实测在 [SENSORS.md](SENSORS.md)。这条替换**等上一层的授权**（改了已批的里程碑形状），授权前不开新包；不跑实跑。
+
 工作包（报告只发给本节点，不发给上一层）：
 
 1. **[已完] D1 普查尺子** —— `scripts/d1_census.py` + `tests/test_d1_census.py`：把 A、C1、C2 的分子分母、判定人口与退出码变成一条只读命令。判定程序住 [SCHEMA.md](SCHEMA.md#门槛判定程序)。
@@ -20,6 +22,9 @@
 6. **[已完·部分] 实跑 → 新快照 → 普查**（2026-10-21）—— 一次有界实跑落成了（`deepseek/deepseek-flash` + 合成帧源，13 分 20 秒，$0.037），新快照 `~/backseat-data/snapshots/2026-10-21/backseat.db`，判定人口 8 行且普查退出 0。**B 抽样与拒收率的正式读数还没做**：两者都要 ≥200 行，这一轮只落了 8 行（上游授权只到一次单会话），所以它们仍是“不能确立”，不是通过。授权本身是 root 记的 `assumed` 决定，不是用户的。
 
 ## 当前事实（决定过的）
+
+- **产品瞄准点改了（2026-10-23，人当着说的）**：三件——他的屏幕多数就是一个终端、里面是他跟 agent 打的字（没有可评的富内容）；“能替我做”从没真做过、而这读起来就是低质量；严肃质量要靠外部材料。落成的三条：**屏幕当触发器不当内容源**、**动作不承诺**、**物质从屏幕外面取**。代价写在同一处（网络/延迟/陈旧/认错题）。来源：用户自述 2026-10-23；条目在 [PEOPLE.md](PEOPLE.md)，机制在 [DESIGN.md](DESIGN.md) §1，里程碑在 [ROADMAP.md](ROADMAP.md) 的 M0″ 段。
+- **AT-SPI 对他的终端一个字都不给（实测 2026-10-23）**：Ghostty 1.3.1 在 a11y 总线上 25 个节点，**零个 `Text`、零个 `Selection`**，只有窗口/标签标题、几何与 23 个 `Action`；而同会话的 VTE 终端有 `Text`，`role=terminal` 的节点 `CharacterCount=1673` 且 `GetText` 返回可见屏文本。所以“读不到终端”是终端程序的选择，不是平台极限；对这个人，终端内容的唯一来源是像素。读数与复算命令：`python3 scripts/atspi_probe.py ghostty`，住 [SENSORS.md](SENSORS.md) 第 1 节。
 
 - **分母为 0 的项是空真，普查按"不能确立"退出 2**：`scripts/d1_census.py` 现在除了"判定人口为空"，还在 **C1 没有命中行、C2 没有被沿用行**时退出 2（缺值记不能确立，不记 0）。这是复核提的，采纳了：空真不是通过。所以预演库（整行拒收之后 `carried=0`）的普查退出码是 2，不是 0——C2 在那一版规则下**没有分母**。
 - **D1 C 成为门槛项，阈值 0 缺陷（即 100%）**：它数的是"依据在不在行内"，只有两态；低于 100% 就是承认已知缺陷。B 的 95% 是抽样判断，两者不共用阈值。C 的一半（C1 切换句基帧、C2 沿用称呼点名）由 `scripts/d1_census.py` 判，历史行不进判定。
@@ -49,6 +54,8 @@
 - **称呼机制对真模型的量法**：机制侧由测试固定（不合作的模型＝可见拒收，不是静默沿用）；模型侧**没有**可用的模型调用（`idle-compute` 下不发模型请求），故只有一个事后读数：`run.log` 里 `整行拒收` 的行数 / 该时段写入的 small 行数（模型没在 `cast` 里点名的比例；轨迹里见证调用 24,553 次、带 `cast` 的 0 次——`grep -h -o '"purpose": "witness[^"]*"' ~/backseat-data/trajectory/*.jsonl | wc -l` 与 `grep -h -c '"cast"' ~/backseat-data/trajectory/*.jsonl | paste -sd+ | bc`——所以现在会很大）。这个数只记不判；判它的是**修复后的一天实跑**（≥200 行），读数在 `docs/RUNBOOK.md` 的验证节。若拒收率长期 >50%，问题在提示词而不在规则，重开的是提示词而不是规则。
 
 ## 证据指针
+
+- 传感器实测：`python3 scripts/atspi_probe.py ghostty` / `python3 scripts/atspi_probe.py gnome-terminal-server --text-len`（只数接口与字符数，不打印正文）；读数住 [SENSORS.md](SENSORS.md)。
 
 - 冻结快照（通道 A 唯一输入）：`~/backseat-data/snapshots/2026-10-19/backseat.db`，`snapshot_sha256 d007dc75…`，`MANIFEST.json` 的 `frames` 段 26,424 帧 / 1,695,431,728 字节 / 0 缺失。
 - 实跑快照：`~/backseat-data/snapshots/2026-10-21/backseat.db`，`snapshot_sha256 28852e51a9bc…`，42,436 observations / 25,908 messages / 26,432 帧（1,695,813,118 字节，0 缺失）；普查命令与四个读数住 ROADMAP 的 M0′ 状态行。
