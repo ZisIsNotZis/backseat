@@ -14,6 +14,11 @@ effort = 0.5                       # 0.0~1.0：anchor频率/压缩粒度/侦探�
 # ring_seconds = 120.0             # RAM 环时长
 # batch_max = 6                    # 每处理窗最多入选帧数
 
+# —— M0″ 外部材料链 ——
+# grounding_min_interval = 300.0        # 两次取材料的最小间隔（秒）
+# grounding_projects_root = "~/vibe"   # 标题能解析到的本机项目根
+# grounding_sessions_root = "~/.pi/agent/sessions"  # pi 会话记录根
+
 # —— 引擎（默认阶梯，可显式覆盖）——
 # anchor_every_n = 100
 # anchor_age_min = 30

@@ -21,6 +21,8 @@ from .compressor import Compressor
 from .config import load_config
 from .model import ModelClient, ModelError
 from .persona import Persona
+from .grounding import (Commentator, GroundingEngine, MaterialFetcher,
+                        ProjectResolver)
 from .sensors.screen import Frame, ScreenSensor
 from .store import Store
 from .trajectory import Trajectory
@@ -64,6 +66,24 @@ def build_witness(cfg, store: Store) -> Witness | None:
     return wit
 
 
+def build_grounding(cfg, store: Store, model) -> GroundingEngine | None:
+    """M0″ 外部材料链：模型可用才启用；L0/L1 不依赖它。"""
+    if model is None:
+        return None
+    data_dir = Path(cfg.data_dir).expanduser()
+    fetcher = MaterialFetcher(
+        projects_root=getattr(cfg, "grounding_projects_root", "~/vibe"),
+        sessions_root=getattr(cfg, "grounding_sessions_root",
+                             "~/.pi/agent/sessions"))
+    return GroundingEngine(
+        store, data_dir,
+        fetcher=fetcher,
+        commentator=Commentator(model),
+        resolver=ProjectResolver(getattr(cfg, "grounding_projects_root",
+                                         "~/vibe")),
+        min_interval=getattr(cfg, "grounding_min_interval", 300.0))
+
+
 async def run(cfg, ticks: int | None) -> None:
     data = Path(cfg.data_dir).expanduser()
     data.mkdir(parents=True, exist_ok=True)
@@ -71,6 +91,7 @@ async def run(cfg, ticks: int | None) -> None:
     bus = EventBus()
     sensor, _ = build(cfg, store, bus)
     witness = build_witness(cfg, store)
+    grounding = build_grounding(cfg, store, witness.model) if witness else None
     if witness is None:
         print("L1 见证层关闭（缺 LITELLM_BASE_URL 或 API key）——仅 L0 采集", flush=True)
     else:
@@ -100,6 +121,8 @@ async def run(cfg, ticks: int | None) -> None:
                     if now_wall - store.get_state("last_digest", 0.0) >= cfg.digest_min * 60:
                         witness.persona.on_digest()
                         store.set_state("last_digest", now_wall)
+                if grounding is not None:
+                    grounding.maybe_ground_pending()  # M0″：新 small 事实 + 节流
             except ModelError as e:
                 key = str(e)[:80]
                 if time.time() - _err_at.get(key, 0) > 300:
@@ -133,7 +156,8 @@ async def run(cfg, ticks: int | None) -> None:
         p = witness.persona.stats if witness else {}
         if witness:
             witness.persona.outlet.close()
-        print(json.dumps({"final": {"sensor": s, "witness": w, "persona": p},
+        print(json.dumps({"final": {"sensor": s, "witness": w, "persona": p,
+                                     "grounding": grounding.stats if grounding else {}},
                           "storage_bytes": store.storage_used()}),
               flush=True)
         store.close()

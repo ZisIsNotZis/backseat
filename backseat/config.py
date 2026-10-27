@@ -38,7 +38,12 @@ class Config:
     blank_std: float = 6.0              # 空帧拦截：32x32 灰度 std 阈值
     digest_min: float = 20.0            # 人格层周期 digest（分钟）：频率校准旋钮
     persona_mode: str = "assistant"     # assistant=信息不对称优先；companion=氛围组（显式开启）
-    insight_anomaly: bool = True        # 深夜/超长连续类洞察（合成数据校准期可关）     # assistant=信息不对称优先；companion=氛围组（显式开启）
+    insight_anomaly: bool = True        # 深夜/超长连续类洞察（合成数据校准期可关）
+
+    # —— M0″ 外部材料表达链（grounding）——
+    grounding_min_interval: float = 300.0  # 两次取材料的最小间隔（秒）；新 small 事实触发
+    grounding_projects_root: str = "~/vibe"  # 可解析的项目根（expanduser 后是 $HOME/vibe）
+    grounding_sessions_root: str = "~/.pi/agent/sessions"  # pi 会话记录根
 
     # —— 模型 ——
     model: str = "github_copilot/gpt-6-luna"  # 月配额 10-01 重置；备选 volcengine（5h 滚动配额）
