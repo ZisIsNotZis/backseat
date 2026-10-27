@@ -15,10 +15,10 @@
    的实测读数与过期条件，不是设计愿望。
 4. 读 `inbox/` 与 `mail/`（若有）：每封信开头是 `kind/from/to/spend`，读完先落地到 `docs/` 再删信、再提交。
    收信与发信都走 `inbox/`：上一层的契约落在 `inbox/<日期>-*.md`，我给 root 的报告也写在那里（`to: root`）。
-5. 跑一遍测试（14 个文件，约 20 秒）：
+5. 跑一遍测试（15 个文件，约 20 秒）：
 
 ```sh
-for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py tests/test_rehearse_writes.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py tests/test_rehearse_writes.py tests/test_grounding.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
 ```
 
 ## 怎么继续

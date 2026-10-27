@@ -4,13 +4,13 @@
 
 # Backseat · 后座
 
-### 它坐在你人生的后座，看完全程，忍不住评论；等你点头，才接过方向盘。
+### 它坐在你人生的后座，看完全程，只在指得出自己读过什么时才开口。
 
-**Backseat 是一个本地优先的 AI 长期伴侣：它把屏幕上发生的事压成分层记忆——瞬间 → 片段 → 行为 → 意图 → 画像——并且只在自己知道你不知道的事时才开口。**
+**Backseat 是一个本地优先的 AI 长期伴侣：屏幕只当触发器，真正的内容从屏幕之外取——你的仓库、文档与会话记录；每条评论都必须带引用，取不到材料就沉默。**
 
 主流 AI 产品的路径是：挖掘痛点 → 派 FDE 深入业务 → 定制打磨 → 交付。这条路径贵、慢，只服务最尖的那几个痛点。Backseat 走相反的路：**先部署，先跑起来，让理解自己从数据里长出来**。
 
-从采集到文字离开本机之前，一切都在本地：帧在自己机器上采样、去重、算哈希，模型请求只发给你自己的 OpenAI 兼容端点。弹幕只是它的第一张嘴，不是产品本体。
+从采集到文字离开本机之前，一切都在本地：帧在自己机器上采样、去重、算哈希，取材料是只读的，模型请求只发给你自己的 OpenAI 兼容端点。弹幕只是它的第一张嘴，不是产品本体。
 
 ## 快速开始
 
@@ -34,9 +34,18 @@ cp config.example.toml config.toml   # 然后按需修改
 ./scripts/dev-down.sh                # 停守护进程与视频源（不动你自己的 LiteLLM 代理）
 ```
 
+M0″ 可以脱离实时屏幕单独跑（材料用本机仓库与 pi 会话记录；项目根默认 `~/vibe`，可用 `config.toml` 的 `grounding_projects_root` 改）：
+
+```sh
+python3 scripts/m0pp_demo.py --title 'zsh · ~/vibe/backseat' --data-dir ~/backseat-data
+python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding
+python3 scripts/m0pp_sample.py --decisions ~/backseat-data/grounding --out ~/backseat-data/grounding/sample.md
+```
+
 ## 现在能做什么
 
 - **屏幕传感器（L0）**——X11 抓帧 + 采样节奏控制器（低/中/高三档，由 pHash 动力学 EMA 驱动）、pHash 门控、空帧拦截、约 120 秒的 RAM 环（采集频率 ≠ 处理频率）、封闭枚举的大事件检测，帧落盘并记下 hash/key/bytes。
+- **有据的评论（M0″）**——屏幕只给触发；链路从窗口/标签标题解析出本机项目，再从仓库（README、docs、`git log/status/diff`）和该项目的 pi 会话记录里取真实材料，让模型给出一句题面与一句评论，并要求引用能落回取到的材料。没有材料、引用伪造、引用别的项目——一律沉默；每次尝试都留决策日志可复算。题面正确率的 50 时刻人工抽样仍待用户判。
 - **见证层（L1）**——像素→文字的唯一转换点。anchor/diff 双模式与强制重锚、严格 JSON 输出契约、解析失败重试一次后丢弃并记账，逐调用计量 token/成本/缓存/时延，全量写入 `trajectory/` JSONL。
 - **证据基，不是感觉**——每一行事实都带着可核对的观察 id；比较句（"从 X 切至 Y"）会把被比的那一帧并进本行的引用；称呼只有在本行点名到具体帧时才能用，点不出来就**整行拒收**，绝不静默沿用旧称呼。
 - **记忆金字塔（L2）**——small → medium → big 分层合并（K/M 阈值）、`USER_MODEL` 增量合并、重启后从 bigs + mids + anchor 恢复。
@@ -51,6 +60,7 @@ cp config.example.toml config.toml   # 然后按需修改
 ```
 backseat/            引擎本体
   sensors/           x11 探针、屏幕传感器（采样 / 环 / 挑选）、pHash
+  grounding.py       M0″：触发 → 题面 → 本机材料 → 带引用评论，或沉默
   witness.py         L1：帧 → 事实（证据基与写入规则只在这一处）
   compressor.py      L2：small→medium→big 合并
   kb.py              唤起记忆、周期重放、flashback
@@ -60,8 +70,8 @@ backseat/            引擎本体
   store.py           SQLite：observations / messages / kb / expressions / metrics / state
   bus.py clock.py config.py model.py trajectory.py
 evals/               在冻结快照上只读运行的评测尺子（不调模型、不联网）
-scripts/             install、dev-up/down、freeze_snapshot、d1_census、rehearse_writes、backfill_epithets、atspi_probe
-tests/               14 个互相独立、各自可跑的文件
+scripts/             install、dev-up/down、freeze_snapshot、d1_census、rehearse_writes、backfill_epithets、atspi_probe、m0pp_demo/eval/sample
+tests/               15 个互相独立、各自可跑的文件
 docs/               0–9 编号的设计记录（痛点 → 目标 → 实测约束 → 用例 → 产品 → 架构 → 契约 → 内部细节 → 实现）
 ```
 
@@ -100,7 +110,11 @@ python3 scripts/d1_census.py --db ~/backseat-data/snapshots/<UTC日期>/backseat
 - M5 人格层 + 弹幕出口——闸门施加在草稿之后，逐条回执。
 - M6 打包——安装脚本、systemd unit、LICENSE、这份 README。
 
-还有几道确认门要的是真实使用而不是更多代码：真跑一天的采集、真实桌面上的 callback 演示、以及人对弹幕频率与口吻的打分。感知层已经到"再多写也增加不了可信度"的位置，所以它转入维护态，靶子换到别处。
+还有几道确认门要的是真实使用而不是更多代码：真跑一天的采集、真实桌面上的 callback 演示、以及人对弹幕频率与口吻的打分。感知层已经到"再多写也增加不了可信度"的位置，所以它转入维护态。
+
+**当前靶子（M0″）：有据的评论**
+
+屏幕只当触发器，不是内容源。当前里程碑是一条端到端链：触发 → 一句话题面 → 从屏幕外取材料 → 一条带引用的评论，或者沉默。机械门已经在 50 个真实会话时刻的重放上变绿：有据率 100%、无材料出口 0、跨项目引用 0。剩下的是人的那门：从 `~/backseat-data/grounding/sample.md` 判断题面有没有说对项目与步骤。网络材料与实时标题触发在这道判定之后。
 
 **计划中**
 

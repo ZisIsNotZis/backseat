@@ -4,13 +4,13 @@
 
 # backseat
 
-### It rides in the back seat of your life, watches the whole trip, and can't help commenting — it takes the wheel only when you nod.
+### It rides in the back seat of your life, watches the whole trip, and only speaks when it can point at what it read.
 
-**Backseat is a local-first AI companion that compresses what happens on your screen into layered long-term memory of you — moments → episodes → behaviour → intent → portrait — and only speaks when it knows something you don't.**
+**Backseat is a local-first AI companion that uses your screen as a trigger, fetches the substance from outside it — your repositories, docs and session records — and comments only when every claim is cited; with no material it stays silent.**
 
 The usual path for an AI product is to mine a pain point, send a forward-deployed engineer in, customise, deliver — expensive, slow, and only affordable for the sharpest pain. Backseat takes the opposite path: deploy first, let it run, and let the understanding grow out of the data on its own.
 
-Everything up to the text leaving your machine is local: frames are sampled, de-duplicated and hashed on your own box, and the model calls go to your own OpenAI-compatible endpoint. The danmaku overlay is just its first mouth, not the product.
+Everything up to the text leaving your machine is local: frames are sampled, de-duplicated and hashed on your own box, the material lookup is read-only, and the model calls go to your own OpenAI-compatible endpoint. The danmaku overlay is just its first mouth, not the product.
 
 ## Quick start
 
@@ -34,9 +34,18 @@ cp config.example.toml config.toml   # then edit
 ./scripts/dev-down.sh                # stop daemon + video source (never touches your LiteLLM proxy)
 ```
 
+M0″ is runnable on its own, without a live screen (it uses the local repos and pi session records as material; project root defaults to `~/vibe`, override with `grounding_projects_root` in `config.toml`):
+
+```sh
+python3 scripts/m0pp_demo.py --title 'zsh · ~/vibe/backseat' --data-dir ~/backseat-data
+python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding
+python3 scripts/m0pp_sample.py --decisions ~/backseat-data/grounding --out ~/backseat-data/grounding/sample.md
+```
+
 ## What it can do now
 
 - **Screen sensor (L0)** — X11 frame sampling with a cadence controller (low/mid/high tiers driven by pHash dynamics EMA), pHash gating, blank-frame rejection, a ~120 s RAM ring so capture rate ≠ processing rate, closed-enum event detection, JPEG frames on disk with hash/key/bytes recorded.
+- **Grounded commentary (M0″)** — the screen only supplies a trigger; the chain resolves the local project from the window/tab title, fetches real materials from the repo (README, docs, `git log/status/diff`) and that project's pi session records, asks the model for one thesis + one comment, and requires citations that resolve to the fetched material. No material, fabricated citation, or cross-project citation ⇒ silence; every attempt is logged for replay. The 50-moment human thesis sample is still open.
 - **Witness layer (L1)** — pixels → text, the only conversion point. anchor/diff modes with forced re-anchor, strict JSON output contract, retry-then-drop on parse failure, per-call token/cost/cache/latency metering plus a full `trajectory/` JSONL.
 - **Evidence basis, not vibes** — every fact row carries the observation ids it can be checked against; comparison sentences ("switched from X to Y") pull the base frame into that row's citations; a nickname may only be used if it is re-named to a frame in the same row, otherwise **the whole row is refused** rather than silently carrying a stale name.
 - **Memory pyramid (L2)** — small → medium → big merging (K/M thresholds), incremental `USER_MODEL` merge, restart recovery from bigs + mids + anchor.
@@ -51,6 +60,7 @@ cp config.example.toml config.toml   # then edit
 ```
 backseat/            the engine
   sensors/           x11 probe, screen sensor (sampling, ring, selector), pHash
+  grounding.py       M0″: trigger → thesis → local materials → cited comment, or silence
   witness.py         L1: frames → facts (evidence basis + write rules live here, nowhere else)
   compressor.py      L2: small→medium→big merging
   kb.py              recall, scheduled replay, flashback
@@ -60,8 +70,8 @@ backseat/            the engine
   store.py           SQLite: observations / messages / kb / expressions / metrics / state
   bus.py clock.py config.py model.py trajectory.py
 evals/               read-only ruler over a frozen snapshot (no model, no network)
-scripts/             install, dev-up/down, freeze_snapshot, d1_census, rehearse_writes, backfill_epithets, atspi_probe
-tests/               14 standalone test files, each runnable on its own
+scripts/             install, dev-up/down, freeze_snapshot, d1_census, rehearse_writes, backfill_epithets, atspi_probe, m0pp_demo/eval/sample
+tests/               15 standalone test files, each runnable on its own
 docs/                numbered 0–9 design record (problem → goal → constraints → use cases → product → architecture → interface → detail → implementation)
 ```
 
@@ -100,7 +110,11 @@ Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first — it is four sentences of hous
 - M5 persona + danmaku outlet — engine gates after drafting, receipts.
 - M6 packaging — install script, systemd unit, LICENSE, this README.
 
-Some confirmation gates still need real usage rather than more code: a day of real capture, a callback demo on a real desktop, and a human score on danmaku frequency and tone. The perception layer has reached the limit of what can be verified without that data, so it moves to maintenance and the next target is elsewhere.
+Some confirmation gates still need real usage rather than more code: a day of real capture, a callback demo on a real desktop, and a human score on danmaku frequency and tone. The perception layer has reached the limit of what can be verified without that data, so it moves to maintenance.
+
+**Current target (M0″): grounded commentary**
+
+The screen is a trigger, not the source. The active milestone is one end-to-end chain — trigger → one-sentence thesis → material fetched outside the screen → a comment that cites it, or silence. The mechanical gates are green on a 50-moment replay from real session records: citation rate 100 %, zero exits without material, zero cross-project citations. The remaining gate is human: judging whether the thesis named the right project and step, from `~/backseat-data/grounding/sample.md`. Web material and live title triggers come after that verdict.
 
 **Planned**
 

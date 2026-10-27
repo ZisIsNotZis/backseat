@@ -68,6 +68,22 @@
 - **D-Bus 是机会主义的**：仅记录桌面通知，不承诺覆盖。成败检测的主路径是屏幕文字理解（ATSPI 优先于 VLM 截图）；bash hook 不做。
 - **传感器换平台＝换适配器**：核心零改动；插件接口见 [7_INTERFACE.md](7_INTERFACE.md)。
 
+## M0″ 外部材料表达链（屏幕只当触发器）
+
+触发（`observations.meta.to` 的窗口/标签标题，或一条新 small 事实）→ 题面（一句话：在哪个项目、哪一步）→
+外部材料（本机仓库 README/docs/`git log|status|diff --stat` + 该项目的 pi 会话记录）→ 评论（只基于材料，
+每条带至少一条可解析引用）或沉默。屏幕像素只用来触发，绝不是内容来源。
+
+**失败处理（全部落到沉默，不降级成“我觉得”）**：解析不出项目 → `no_project`，不取材料；取不到材料 →
+**不调用模型**、`no_material`；模型不可用或输出解析失败 → `model_disabled`/`model_error`/`parse_error`；
+引用为空、引用不存在、引用别的项目、题面项目与引用不一致 → 整条丢弃（`uncited`/`unknown_citation`/
+`cross_project`/`thesis_project_mismatch`），不落 `expressions`。材料带 `fetched_at`，陈旧就重新取，不拿旧材料凑数。
+
+**为什么先本机材料**：离线可取、可事后复查（路径/时间/sha256），而“认错题”是这条链最贵的失败——材料按
+解析出的项目取、引用按项目校验，跨项目直接判错；公开网络材料是后续通道，不阻塞这一轮。每个尝试（说与
+沉默）都落一行决策 JSONL 供判官复算（形状见 [7_INTERFACE.md](7_INTERFACE.md)，命令见
+[9_IMPLEMENTATION.md](9_IMPLEMENTATION.md)）；阈值只在 [0_ROADMAP.md](0_ROADMAP.md)。
+
 ## LLM 参与 slider
 
 LLM 不是每步都进；进场线按层写死。

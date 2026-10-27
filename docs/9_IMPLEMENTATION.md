@@ -91,6 +91,9 @@ digest_min = 30.0                  # 人格周期 digest 间隔（分钟）—�
 persona_mode = "assistant"         # assistant=信息不对称优先；companion=氛围组
 insight_anomaly = false            # 深夜/超长连续类洞察（合成数据下无意义）
 min_roast_interval = 10.0          # 节流秒
+grounding_min_interval = 300.0     # M0″ 取材料的最小间隔（秒）
+# grounding_projects_root = "~/vibe"
+# grounding_sessions_root = "~/.pi/agent/sessions"
 ```
 
 全量参数（弹性预算 `storage_bytes` / `daily_requests` / `effort` 及其导出的采样档、压缩粒度、anchor 频率、
@@ -115,10 +118,10 @@ sqlite3 ~/backseat-data/backseat.db \
 健康标准：`witness_cursor == count(observations)`（无积压）；`抓帧失败` 不持续增长；
 `run.log` 无重复错误刷屏（同类错误 5 分钟最多一条）。
 
-测试：`tests/` 下 14 个文件逐个直跑，非零即打印 FAIL：
+测试：`tests/` 下 15 个文件逐个直跑，非零即打印 FAIL：
 
 ```sh
-for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py tests/test_rehearse_writes.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
+for f in tests/test_m0.py tests/test_m1.py tests/test_m2.py tests/test_m3.py tests/test_m4.py tests/test_m5.py tests/test_insight.py tests/test_evict.py tests/test_evals.py tests/test_bigref.py tests/test_freeze.py tests/test_witness_basis.py tests/test_d1_census.py tests/test_rehearse_writes.py tests/test_grounding.py; do python3 "$f" >/dev/null || echo "$f FAIL"; done
 ```
 
 这一行是**手写枚举**：新增 `tests/test_*.py` 必须同时加进这一行，否则不会被扫测（坑 12）。
@@ -250,6 +253,41 @@ ls ~/backseat-data/run2.DONE || tail -f ~/backseat-data/run2.driver.log
 预检两关（网关 200、该模型在路由表里）不过就当场 `finish`，不空转。零行时不冻结快照——冻结一个没有新行的库
 只会让人以为跑过了。花销按 `trajectory/` 里起点之后的 usage 求和、乘网关价表算，取不到就记"缺席"，不记 0。
 
+## M0″ 外部材料链：演示 / 判官 / 抽样
+
+端点与模型事实（未在本机设置环境变量）：`http://127.0.0.1:4000` 监听中；`LITELLM_BASE_URL` /
+`LITELLM_API_KEY` **不在环境里**，仓库根也**没有 `config.toml`**，所以脚本走显式参数
+`--base-url` / `--api-key`；默认模型 `github_copilot/gpt-6-luna`。`--no-model` 是确定性出口（只取材料，
+然后 `model_disabled` 沉默），不伪造评论。
+
+```sh
+# 单条：真实仓库 + 真实 pi 会话 → 一条带引用的表达（或沉默）
+python3 scripts/m0pp_demo.py --title 'zsh · ~/vibe/backseat' --data-dir ~/backseat-data
+# 无模型（确定性）：材料照取，评论沉默
+python3 scripts/m0pp_demo.py --title 'zsh · ~/vibe/backseat' --data-dir /tmp/m0pp --no-model
+# 批量：最近 N 条真实用户消息（来自 ~/.pi/agent/sessions/--home-z-vibe-<项目>--/），每条一个决策
+python3 scripts/m0pp_demo.py --moments 50 --data-dir ~/backseat-data
+
+# 判官：有据率 / 无材料出口 / 错题 / 沉默原因（退出码 0 全绿、1 不绿、2 无决策）
+python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding
+# 人那门：抽样表（正确/错误列留空，由用户填；题面正确率只在给 --labels 时算）
+python3 scripts/m0pp_sample.py --decisions ~/backseat-data/grounding \
+    --out ~/backseat-data/grounding/sample.md          # 默认可读版（只有 locator）
+python3 scripts/m0pp_sample.py --decisions ~/backseat-data/grounding \
+    --out /tmp/sample-full.md --full                    # 详细版（带材料正文）
+python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding \
+    --labels ~/backseat-data/grounding/labels.json
+```
+
+决策日志是判官的唯一输入：`~/backseat-data/grounding/decisions-YYYY-MM-DD.jsonl`（形状见
+[7_INTERFACE.md](7_INTERFACE.md)）。没有 `~/backseat-data` 时脚本按需创建；`--data-dir` 不给时 demo
+用临时目录并在结尾打印路径。测试不依赖本机仓库：`python3 tests/test_grounding.py` 用临时 git 项目与临时
+会话目录，全离线。
+
+守护进程挂点：`Config.grounding_min_interval`（默认 300 秒）限制两次取材料的间隔；处理过的新 small 行由
+`state.grounding_cursor` 游标推进，不重复触发；标题先扫该行全部 obs id，再退到该行之前 30 分钟内最近的
+`meta.to` 观察，仍无标题就放弃（不调模型）；模型不可用时整条链不启用，L0/L1 不受影响。
+
 ## 数据与日志位置
 
 | 路径 | 内容 |
@@ -257,6 +295,7 @@ ls ~/backseat-data/run2.DONE || tail -f ~/backseat-data/run2.driver.log
 | `~/backseat-data/backseat.db` | SQLite（WAL）：observations / messages / kb / expressions / metrics / state |
 | `~/backseat-data/frames/YYYYMMDD/*.jpg` | 入选帧（1600px JPEG q6） |
 | `~/backseat-data/trajectory/YYYY-MM-DD.jsonl` | 每次 LLM 调用全量（messages/响应/usage/时延） |
+| `~/backseat-data/grounding/decisions-YYYY-MM-DD.jsonl` | M0″ 每个尝试（说/沉默）的决策日志，判官输入；`sample.md`/`labels.json` 是同目录的人工产物 |
 | `~/backseat-data/snapshots/<UTC 日期>/backseat.db` | 冻结快照（只读副本）+ `MANIFEST.json` + `backseat.db.sha256`；通道 A 的唯一输入 |
 | `~/backseat-data/run.log` | 守护进程日志（启动时保留尾部 500KB） |
 | `~/.litellm.log` | 代理日志（**会膨胀**，定期清理） |

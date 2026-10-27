@@ -46,6 +46,45 @@
 `skipped`/超时/旧引擎无回执映射为 `sent`（已投递未确认渲染），即回执不可得时不谎报 shown。
 出口插件声明支持集，未知 mood 降级 neutral；介质翻译（颜色/字号/打断等级）是插件对 mood/salience 的映射——弹幕不是词汇，是翻译结果。
 
+## M0″ 外部材料（Material）与决策日志
+
+一条表达只能基于外部材料。材料对象在一次尝试内交换：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | TEXT | 本次尝试内唯一（`m1`…`mN`）；模型只能引用它 |
+| `kind` | TEXT | `repo_readme` / `repo_doc` / `git_log` / `git_status` / `git_diff` / `session` |
+| `project` | TEXT | 材料所属项目路径；引用必须与题面项目一致 |
+| `locator` | TEXT | 事后可复查的位置：`相对路径#Lx-y`、`git:<命令>` 或 `会话文件@UTC时间戳` |
+| `fetched_at` | TEXT | 取到的时刻，UTC ISO |
+| `excerpt` | TEXT | 取到的正文（有上限） |
+| `sha256` | TEXT | `excerpt` 的 utf-8 sha256，用于判官复算 |
+
+落库时表达仍只住 `expressions`：`source_refs` 每个引用一项
+`{"table":"materials","id","locator","fetched_at","sha256","project"}`；有触发观察时再加
+`{"table":"observations","id"}`。`meta` 记 `thesis`、`material_count`、`gate`、`project`、`title`。
+不新增表。
+
+每个尝试（说与沉默）向 `<data_dir>/grounding/decisions-YYYY-MM-DD.jsonl` 追加一个 JSON 对象：
+
+| 字段 | 说明 |
+|---|---|
+| `ts` / `ts_wall` | UTC ISO / 墙钟秒 |
+| `moment_id` | 抽样与人工标签的稳定 id（会话来源为 `文件@时间戳`，可为 null） |
+| `source` | `cli` / `observation` / `session` |
+| `outcome` | `speak` / `silence` |
+| `reason` | `ok`，或沉默原因闭集：`no_project` `no_material` `model_disabled` `model_error` `parse_error` `model_silence` `no_thesis` `uncited` `unknown_citation` `cross_project` `thesis_project_mismatch` `empty_content` |
+| `title` / `project` | 触发与解析出的项目（解析不出为 null） |
+| `thesis` | 模型题面（一句话）；沉默可为 null |
+| `materials` | 本次取到的**全部**材料（字段同上，含 locator/fetched_at/sha256） |
+| `content` / `citations` | 评论正文与所引材料 id 列表 |
+| `source_obs` / `expression_id` | 触发观察 id / 落库的 expressions id（沉默为 null） |
+
+判官只读这个日志：引用 id 必须在本条 `materials` 里、项目一致、`excerpt` 与其 `sha256` 自洽、locator 文件仍在；
+带行号的仓库 locator 按切片重算哈希，文件在 `fetched_at` 之后被改过记为 `stale`（取时快照仍成立，不算伪造），
+`git:` 这类动态 locator 不可复算时只查可用性。阈值与退出码归 [0_ROADMAP.md](0_ROADMAP.md)
+与 [9_IMPLEMENTATION.md](9_IMPLEMENTATION.md)。
+
 ## 五个插件契约（核心只认这五个）
 
 ```
