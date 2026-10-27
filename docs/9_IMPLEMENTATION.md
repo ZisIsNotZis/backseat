@@ -303,6 +303,7 @@ python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding \
 | `~/backseat-data/frames/YYYYMMDD/*.jpg` | 入选帧（1600px JPEG q6） |
 | `~/backseat-data/trajectory/YYYY-MM-DD.jsonl` | 每次 LLM 调用全量（messages/响应/usage/时延） |
 | `~/backseat-data/grounding/decisions-YYYY-MM-DD.jsonl` | M0″ 每个尝试（说/沉默）的决策日志，判官输入；`sample.md`/`labels.json` 是同目录的人工产物 |
+| `~/backseat-data/grounding/dry-run-2026-10-27.db` | M0″ 50 时刻 dry-run 的 `expressions` 落库副本（没有 outlet 渲染）；live 库 `backseat.db` 保持空，不把 dry-run 当成已说过的话 |
 | `~/backseat-data/snapshots/<UTC 日期>/backseat.db` | 冻结快照（只读副本）+ `MANIFEST.json` + `backseat.db.sha256`；通道 A 的唯一输入 |
 | `~/backseat-data/run.log` | 守护进程日志（启动时保留尾部 500KB） |
 | `~/.litellm.log` | 代理日志（**会膨胀**，定期清理） |

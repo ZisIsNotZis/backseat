@@ -50,7 +50,9 @@ M0′ 的门槛降为见证层性质，Release 2.0 转维护态。roadmap 已重
 
 表头写明了这个 dry-run 的两个边界：批量时刻来自 `~/.pi/agent/sessions/` 里**真实的 role=user 消息**，
 代替实时窗口标题（采集自 2026-10-21 停着）；50 行全在 2026-10-27 12:50–13:36Z 这一段。
-不造时刻、不替人判。
+不造时刻、不替人判。那 50 条 dry-run 的 `expressions` 已从 live 库移到
+`~/backseat-data/grounding/dry-run-2026-10-27.db`（没有 outlet 渲染，不算“已说过的话”），
+live 库保持空；判官只读决策 JSONL。
 
 ## 这次落地了什么（细节只给指针）
 

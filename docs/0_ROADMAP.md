@@ -388,6 +388,8 @@ M5′ 并行可选，不阻塞 M4a 与 M4b
   `--labels` 重跑 eval 才得到题面正确率；在此之前不写“M0″ 通过”。
 - 计量：已落地的调用都进 `metrics`（purpose=`grounding:comment`）与 `trajectory/`；那 50 次批量调用
   在计量落地前，**未计量**。单次同类调用实测 6,870 in / 294 out / 4.6 s（2026-10-27），仅作量级参考。
+- dry-run 的 50 条 `expressions` 已从 live 库移到 `~/backseat-data/grounding/dry-run-2026-10-27.db`：
+  它们没有 outlet 渲染，不该被当成“已说过的话”；live 库保持空，判官只读决策 JSONL。
 - 采集仍停（最后一条观察 2026-10-22 本地）；实时标题触发（窗口切换 → 新 small → 取材料）已接进守护进程，
   但尚无用真实屏幕跑出的读数。
 
