@@ -11,7 +11,7 @@ level='small' 行的 ts_start / content / obs_ids。每道题带一条 check_sql
 时间一律用 UTC 表示（SQLite 的 datetime(ts,'unixepoch') 就是 UTC），题面、答案、
 check_sql 三处口径一致。
 
-计分与引用判定按 docs/SCHEMA.md 的门槛判定程序 D2：`score` 判单题（时间题 ±60s 容差，
+计分与引用判定按 docs/2_GOAL.md 的 D2 度量定义：`score` 判单题（时间题 ±60s 容差，
 其余规范化后相等），`evidence_pass` 判单条引用（被引单元真实持有声明值、该题 check_sql
 能复算回答案、且该引用的时间落在答案所述区间 `interval`）。
 """
