@@ -66,8 +66,13 @@ def build_witness(cfg, store: Store) -> Witness | None:
     return wit
 
 
-def build_grounding(cfg, store: Store, model) -> GroundingEngine | None:
-    """M0″ 外部材料链：模型可用才启用；L0/L1 不依赖它。"""
+def build_grounding(cfg, store: Store, model,
+                    trajectory: Trajectory | None = None) -> GroundingEngine | None:
+    """M0″ 外部材料链：模型可用才启用；L0/L1 不依赖它。
+
+    trajectory 必须与 witness/persona 共用一个实例（同一份 trajectory/ 目录）——
+    grounded 调用与人格调用同等地逐次计量。
+    """
     if model is None:
         return None
     data_dir = Path(cfg.data_dir).expanduser()
@@ -78,7 +83,7 @@ def build_grounding(cfg, store: Store, model) -> GroundingEngine | None:
     return GroundingEngine(
         store, data_dir,
         fetcher=fetcher,
-        commentator=Commentator(model),
+        commentator=Commentator(model, trajectory=trajectory),
         resolver=ProjectResolver(getattr(cfg, "grounding_projects_root",
                                          "~/vibe")),
         min_interval=getattr(cfg, "grounding_min_interval", 300.0))
@@ -91,7 +96,9 @@ async def run(cfg, ticks: int | None) -> None:
     bus = EventBus()
     sensor, _ = build(cfg, store, bus)
     witness = build_witness(cfg, store)
-    grounding = build_grounding(cfg, store, witness.model) if witness else None
+    grounding = (build_grounding(cfg, store, witness.model,
+                                 trajectory=witness.trajectory)
+                 if witness else None)
     if witness is None:
         print("L1 见证层关闭（缺 LITELLM_BASE_URL 或 API key）——仅 L0 采集", flush=True)
     else:

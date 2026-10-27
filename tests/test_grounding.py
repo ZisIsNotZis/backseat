@@ -2,7 +2,8 @@
 
 覆盖：标题→本机项目解析；无项目/无材料→沉默且模型 0 次；伪造引用被拒；跨项目
 引用被拒；合法表达落库且 source_refs 带 locator/fetched_at/sha256；决策 JSONL
-同时记录 speak 与 silence；m0pp_eval 对干净决策退出 0（有据率 100%、无材料出口 0、
+同时记录 speak 与 silence；逐调用计量（每次成功模型调用一行 metrics＋一条
+trajectory、决策带 usage，失败/未调用不伪造）；m0pp_eval 对干净决策退出 0（有据率 100%、无材料出口 0、
 错题 0），篡改一条退出 1；材料只来自被解析项目；抽样表生成；demo 的 --no-model
 确定性出口。
 
@@ -22,6 +23,8 @@ from backseat.grounding import (  # noqa: E402
     Commentator, GroundingEngine, Material, MaterialFetcher, ProjectResolver,
     title_from_observation, validate_draft)
 from backseat.store import Store  # noqa: E402
+from backseat.model import ModelError  # noqa: E402
+from backseat.trajectory import Trajectory  # noqa: E402
 
 CHECKS = 0
 ROOT = Path(__file__).parent.parent
@@ -49,7 +52,7 @@ class FakeModel:
         out = self.outputs.pop(0)
         if isinstance(out, Exception):
             raise out
-        return out, {"in": 10, "out": 10, "cached": 0, "latency_ms": 1}
+        return out, {"in": 10, "out": 10, "cached": 2, "latency_ms": 7}
 
 
 def draft(citations, thesis="他在 alpha 项目里读 README", content="他正在把 alpha 的说明读顺。",
@@ -95,6 +98,19 @@ def make_sessions(sessions_root: Path, project: Path) -> Path:
 def decisions_lines(data_dir: Path) -> list[dict]:
     out = []
     for f in sorted((data_dir / "grounding").glob("decisions-*.jsonl")):
+        for line in f.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                out.append(json.loads(line))
+    return out
+
+
+def metric_rows(store: Store) -> list[dict]:
+    return [dict(r) for r in store.conn.execute("SELECT * FROM metrics ORDER BY id")]
+
+
+def trajectory_lines(data_dir: Path) -> list[dict]:
+    out: list[dict] = []
+    for f in sorted((data_dir / "trajectory").glob("*.jsonl")):
         for line in f.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 out.append(json.loads(line))
@@ -467,6 +483,77 @@ def main() -> None:
         check(len(decisions_lines(data3)) == before_decisions,
               "无标题时不写新决策")
         store3.close()
+
+        # —— 13. 逐调用计量：metrics 一行 / 决策带 usage / trajectory 有记录 ——
+        store4 = Store(tmp / "db4.sqlite")
+        data4 = tmp / "data4"
+        traj4 = Trajectory(data4)
+        fake = FakeModel([draft(["m1"]), "不是 JSON", """{"silence": true}""",
+                          ModelError("网关 502")])
+        eng4 = GroundingEngine(store4, data4, fetcher=fetcher,
+                               commentator=Commentator(fake, log=None,
+                                                       trajectory=traj4),
+                               resolver=resolver, log=None,
+                               now_fn=lambda: 2000.0)
+        # (a) 没有项目 / 没有材料：没调模型 → 没有 metrics 行、usage 为 null
+        d = eng4.maybe_ground("zsh · 完全未知")
+        check(d["reason"] == "no_project", d)
+        check(d["usage"] is None, "无项目时决策的 usage 必须为 null（不伪造）")
+        d = eng4.maybe_ground(str(empty), project=str(empty))
+        check(d["reason"] == "no_material", d)
+        check(d["usage"] is None, "无材料时决策的 usage 必须为 null（不伪造）")
+        check(metric_rows(store4) == [], "没调模型就不得有 metrics 行")
+        check(trajectory_lines(data4) == [], "没调模型就没有 trajectory 记录")
+        # (b) 说出：一次调用 → 一行 metrics（值取自 usage）+ 一条 trajectory + usage 在决策里
+        d = eng4.maybe_ground(f"zsh · {alpha}", moment_id="m-meter")
+        check(d["outcome"] == "speak", d)
+        rows = metric_rows(store4)
+        check(len(rows) == 1, f"一次调用正好一行 metrics: {rows}")
+        row = rows[0]
+        check(row["purpose"] == "grounding:comment", row)
+        check(row["model"] == "fake-grounded", row)
+        check((row["tokens_in"], row["tokens_out"], row["cached_tokens"],
+               row["latency_ms"]) == (10, 10, 2, 7),
+              f"metrics 值必须来自本次 usage: {row}")
+        check(d["usage"] == {"in": 10, "out": 10, "cached": 2, "latency_ms": 7},
+              f"speak 决策应带 usage: {d.get('usage')}")
+        tlines = trajectory_lines(data4)
+        check(len(tlines) == 1, f"每次调用一条 trajectory 记录: {tlines}")
+        check(tlines[0]["purpose"] == "grounding:comment", tlines[0])
+        check(tlines[0]["model"] == "fake-grounded", tlines[0])
+        check(tlines[0]["response"] == json.dumps(
+            json.loads(draft(["m1"])), ensure_ascii=False), "trajectory 记下模型原文")
+        check(tlines[0]["messages"] == fake.calls[0],
+              "trajectory 记下发出去的 messages")
+        check(tlines[0]["usage"] == {"in": 10, "out": 10, "cached": 2,
+                                     "latency_ms": 7}, tlines[0])
+        # (c) 解析失败 / 模型沉默 / 调用失败：调用发生过就要计量（失败的不编造）
+        d = eng4.maybe_ground(f"zsh · {alpha}", moment_id="m-parse")
+        check(d["reason"] == "parse_error" and d["usage"] is not None,
+              f"解析失败也真调了模型，应带 usage: {d}")
+        d = eng4.maybe_ground(f"zsh · {alpha}", moment_id="m-silent")
+        check(d["reason"] == "model_silence" and d["usage"] is not None,
+              f"模型沉默也真调了模型，应带 usage: {d}")
+        d = eng4.maybe_ground(f"zsh · {alpha}", moment_id="m-error")
+        check(d["reason"] == "model_error" and d["usage"] is None,
+              f"调用失败不得伪造 usage: {d}")
+        rows = metric_rows(store4)
+        check(len(rows) == 3, f"三次成功返回的调用 → 三行 metrics: {len(rows)}")
+        check(all(r["purpose"] == "grounding:comment" for r in rows),
+              "每行 purpose 都是 grounding:comment")
+        check(all(r["tokens_in"] == 10 and r["latency_ms"] == 7 for r in rows),
+              f"每行数值都来自那一次 usage: {rows}")
+        check(len(trajectory_lines(data4)) == 3,
+              "失败调用不写 trajectory（只有成功返回的三次）")
+        check(len(fake.calls) == 4, "四次尝试共四次模型调用")
+        metered = [x for x in decisions_lines(data4) if x["usage"] is not None]
+        unmetered = [x for x in decisions_lines(data4) if x["usage"] is None]
+        check(len(metered) == 3 and len(unmetered) == 3,
+              f"决策日志：3 条带 usage（真调用），3 条无（无项目/无材料/失败）: "
+              f"{len(metered)}/{len(unmetered)}")
+        check(all("usage" in x for x in decisions_lines(data4)),
+              "每条决策都必须有 usage 字段（没有调用则为 null）")
+        store4.close()
 
         store.close()
 

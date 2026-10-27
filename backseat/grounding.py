@@ -11,6 +11,10 @@
 每一尝试（说与不说）都追加一行到 <data_dir>/grounding/decisions-YYYY-MM-DD.jsonl，
 它是判官（scripts/m0pp_eval.py）的输入。没有材料时不调用模型；引用不合法时整条沉默。
 不新增 SQLite 表：表达仍住 `expressions`，引用仍住 `source_refs`/`meta`。
+
+逐调用计量：每次确实发生的模型调用（purpose `grounding:comment`）向 `metrics` 落一行、向
+`<data_dir>/trajectory/` 记一条，决策里带 `usage`；没调模型（无项目/无材料/模型关闭）或调用
+失败时不落行、不伪造 usage。
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .clock import Stamp
 from .model import ModelError
 from .persona import MOOD_COLORS
 
@@ -351,11 +356,35 @@ def validate_draft(draft: dict, project: str,
 
 
 class Commentator:
-    """把题面 + 编号材料交给模型；解析、校验、失败即沉默。"""
+    """把题面 + 编号材料交给模型；解析、校验、失败即沉默。
 
-    def __init__(self, model, log=print) -> None:
+    每次成功的模型调用都记进 trajectory（purpose `grounding:comment`，与 persona 同形）；
+    返回的 result 带 `usage`（未调用/调用失败时为 None），引擎据此落 metrics 一行。
+    """
+
+    PURPOSE = "grounding:comment"
+
+    def __init__(self, model, log=print, trajectory=None) -> None:
         self.model = model
         self.log = log
+        self.trajectory = trajectory
+
+    def model_name(self) -> str:
+        return str(getattr(self.model, "model", "") or "unknown")
+
+    def _record(self, messages: list[dict], text: str, usage: dict) -> None:
+        """仅成功调用才落 trajectory；usage 原样交给 Trajectory（它按同一形状取值）。"""
+        if self.trajectory is None:
+            return
+        self.trajectory.record(self.PURPOSE, self.model_name(), messages, text, usage)
+
+    @staticmethod
+    def _silence(reason: str, thesis: str | None = None,
+                 usage: dict | None = None) -> dict:
+        out = {"outcome": "silence", "reason": reason, "thesis": thesis,
+               "content": None, "citations": [], "mood": None, "salience": None,
+               "usage": usage}
+        return out
 
     def _prompt(self, title: str | None, project: str,
                 materials: list[Material]) -> str:
@@ -386,41 +415,44 @@ class Commentator:
 
     def compose(self, title: str | None, project: str,
                 materials: list[Material]) -> dict:
-        """返回 {outcome, reason, thesis, content, citations, mood, salience}。"""
+        """返回 {outcome, reason, thesis, content, citations, mood, salience, usage}。
+
+        `usage` 只有真的调过模型（且调用成功返回）时才不是 None；未调用/调用失败时为 None。
+        """
         if not materials:
-            return {"outcome": "silence", "reason": "no_material", "thesis": None,
-                    "content": None, "citations": [], "mood": None, "salience": None}
+            return self._silence("no_material")
         if self.model is None:
-            return {"outcome": "silence", "reason": "model_disabled", "thesis": None,
-                    "content": None, "citations": [], "mood": None, "salience": None}
-        prompt = self._prompt(title, project, materials)
+            return self._silence("model_disabled")
+        messages = [{"role": "user", "content": self._prompt(title, project, materials)}]
         try:
-            text, _usage = self.model.chat([{"role": "user", "content": prompt}])
+            text, usage = self.model.chat(messages)
         except ModelError:
-            return {"outcome": "silence", "reason": "model_error", "thesis": None,
-                    "content": None, "citations": [], "mood": None, "salience": None}
+            return self._silence("model_error")
         except Exception:  # 注入的测试模型可能抛任意异常；对外仍是沉默
-            return {"outcome": "silence", "reason": "model_error", "thesis": None,
-                    "content": None, "citations": [], "mood": None, "salience": None}
+            return self._silence("model_error")
+        # 调用已发生（且有 usage）：此后每条出口都带 usage，不虚报、不丢计量。
+        self._record(messages, text, usage)
         draft = parse_comment_json(text)
         if draft is None:
-            return {"outcome": "silence", "reason": "parse_error", "thesis": None,
-                    "content": None, "citations": [], "mood": None, "salience": None}
+            return self._silence("parse_error", usage=usage)
         if draft.get("silence"):
-            return {"outcome": "silence", "reason": "model_silence", "thesis": None,
-                    "content": None, "citations": [], "mood": None, "salience": None}
+            return self._silence("model_silence", usage=usage)
         thesis_text, _ = normalize_thesis(draft.get("thesis"), project)
         normalized, reason = validate_draft(draft, project, materials)
         if normalized is None:
             # 被拒的草稿不留内容/引用，但保留模型提出的题面供人判“它有没有认对题”。
-            return {"outcome": "silence", "reason": reason,
-                    "thesis": thesis_text or None, "content": None,
-                    "citations": [], "mood": None, "salience": None}
-        return {"outcome": "speak", "reason": "ok", **normalized}
+            return self._silence(reason, thesis=thesis_text or None, usage=usage)
+        return {"outcome": "speak", "reason": "ok", **normalized, "usage": usage}
 
 
 class GroundingEngine:
-    """一次触发走完整条链，落库或沉默，并把每个尝试写进决策 JSONL。"""
+    """一次触发走完整条链，落库或沉默，并把每个尝试写进决策 JSONL。
+
+    每次**确实发生的**模型调用落 `metrics` 一行（purpose `grounding:comment`）；没有材料/
+    没有项目时根本没调模型，因此不落行、不编造 usage。
+    """
+
+    METRIC_PURPOSE = Commentator.PURPOSE
 
     def __init__(self, store, data_dir: str | Path,
                  fetcher: MaterialFetcher | None = None,
@@ -438,6 +470,19 @@ class GroundingEngine:
         self.log = log
         self.now_fn = now_fn or time.time
         self.stats = {"attempts": 0, "speak": 0, "silence": 0}
+
+    # —— 计量 ——
+    def _record_metrics(self, wall: float, usage: dict) -> None:
+        """一次实际模型调用 → metrics 一行（与 persona 同形状）。调用方只在实际调用后调。"""
+        model = ""
+        if self.commentator is not None:
+            model = self.commentator.model_name()
+        self.store.insert(
+            "metrics", ts_wall=wall, ts_mono=Stamp.now().mono,
+            purpose=self.METRIC_PURPOSE, model=model or None,
+            tokens_in=usage.get("in", 0), tokens_out=usage.get("out", 0),
+            cached_tokens=usage.get("cached", 0),
+            latency_ms=usage.get("latency_ms", 0))
 
     # —— 持久化 ——
     def _append_decision(self, decision: dict) -> None:
@@ -476,15 +521,22 @@ class GroundingEngine:
         materials = self.fetcher.fetch(project) if project else []
         if project is None:
             result = {"outcome": "silence", "reason": "no_project", "thesis": None,
-                      "content": None, "citations": [], "mood": None, "salience": None}
+                      "content": None, "citations": [], "mood": None, "salience": None,
+                      "usage": None}
         elif not materials:
             result = {"outcome": "silence", "reason": "no_material", "thesis": None,
-                      "content": None, "citations": [], "mood": None, "salience": None}
+                      "content": None, "citations": [], "mood": None, "salience": None,
+                      "usage": None}
         elif self.commentator is None:
             result = {"outcome": "silence", "reason": "model_disabled", "thesis": None,
-                      "content": None, "citations": [], "mood": None, "salience": None}
+                      "content": None, "citations": [], "mood": None, "salience": None,
+                      "usage": None}
         else:
             result = self.commentator.compose(title, project, materials)
+
+        usage = result.get("usage")
+        if usage is not None:
+            self._record_metrics(wall, usage)
 
         expression_id = None
         if result.get("outcome") == "speak":
@@ -505,6 +557,7 @@ class GroundingEngine:
             "citations": result.get("citations") or [],
             "source_obs": obs_id,
             "expression_id": expression_id,
+            "usage": usage,
         }
         self._append_decision(decision)
         self.stats["attempts"] += 1

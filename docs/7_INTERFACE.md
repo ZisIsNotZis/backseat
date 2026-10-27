@@ -79,6 +79,7 @@
 | `materials` | 本次取到的**全部**材料（字段同上，含 locator/fetched_at/sha256） |
 | `content` / `citations` | 评论正文与所引材料 id 列表 |
 | `source_obs` / `expression_id` | 触发观察 id / 落库的 expressions id（沉默为 null） |
+| `usage` | 本次模型调用的 usage `{in,out,cached,latency_ms}`；没调模型（`no_project`/`no_material`/`model_disabled`）或调用失败（`model_error`）时为 null——不伪造 |
 
 判官只读这个日志：引用 id 必须在本条 `materials` 里、项目一致、`excerpt` 与其 `sha256` 自洽、locator 文件仍在；
 带行号的仓库 locator 按切片重算哈希，文件在 `fetched_at` 之后被改过记为 `stale`（取时快照仍成立，不算伪造），

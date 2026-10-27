@@ -291,6 +291,10 @@ python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding \
 `state.grounding_cursor` 游标推进，不重复触发；标题先扫该行全部 obs id，再退到该行之前 30 分钟内最近的
 `meta.to` 观察，仍无标题就放弃（不调模型）；模型不可用时整条链不启用，L0/L1 不受影响。
 
+计量：每次**确实发生的** grounded 模型调用向 `metrics` 落一行（purpose `grounding:comment`），并在
+`trajectory/YYYY-MM-DD.jsonl` 记下同一次调用（messages/响应/usage/时延）；没有项目或没有材料时根本没
+调模型，不落行、不编造 usage（决策里 `usage` 为 null）。
+
 ## 数据与日志位置
 
 | 路径 | 内容 |

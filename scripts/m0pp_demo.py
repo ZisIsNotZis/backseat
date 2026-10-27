@@ -31,6 +31,7 @@ from backseat.grounding import (  # noqa: E402
 )
 from backseat.model import ModelClient  # noqa: E402
 from backseat.store import Store  # noqa: E402
+from backseat.trajectory import Trajectory  # noqa: E402
 
 
 def _user_text(content) -> str:
@@ -128,7 +129,9 @@ def main(argv: list[str] | None = None) -> int:
     fetcher = MaterialFetcher(projects_root=args.projects_root,
                               sessions_root=args.sessions_root)
     resolver = ProjectResolver(args.projects_root)
-    commentator = None if model is None else Commentator(model, log=None)
+    commentator = (None if model is None
+                   else Commentator(model, log=None,
+                                    trajectory=Trajectory(data_dir)))
     engine = GroundingEngine(store, data_dir, fetcher=fetcher,
                              commentator=commentator, resolver=resolver,
                              log=lambda *_a: None)

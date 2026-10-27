@@ -329,6 +329,16 @@ M5′ 并行可选，不阻塞 M4a 与 M4b
      抽样表默认不含材料正文、`--full` 含；全量 15 个测试全绿；重跑 eval 仍 100%/0/0。
    - **2026-10-27 读数**：`tests/test_grounding.py` 93 条断言全过；标题扫描全行 obs_ids + 30 分钟近前兜底；
      抽样表从 89 KB 压到 28 KB（50 行），`--full` 保留详细版；全量 15 个测试绿；eval 50/50、0、0。
+9. **[已完] BS-M0PP-09c 取材料的调用计量** —— `idle-compute`，写入面
+   `backseat/grounding.py`、`scripts/m0pp_demo.py`、`backseat/__main__.py`、`tests/test_grounding.py`、`docs/7,9`。
+   - **要让它成真**：M0″ 的每次评论模型调用必须像见证/人格调用一样落 `metrics`（purpose=`grounding:comment`）
+     与 `trajectory/` JSONL（含 messages/响应/usage/时延）；决策行带 `usage`。已发生的 50 次调用没有计量，
+     不得事后补数，只在状态里记“未计量”。
+   - **AC**：新断言覆盖合法表达后 `metrics` 多一行且 tokens/latency 来自 fake usage、决策含 `usage`、
+     trajectory 落了同一调用；全量 15 个测试绿；eval 仍 100%/0/0。
+   - **2026-10-27 读数**：`tests/test_grounding.py` 125 条断言全过；demo 实测 `metrics` 一行
+     `grounding:comment` 6870 in / 294 out / 4646 ms，决策 `usage` 同值，`trajectory/` 落同一调用。
+     那 50 次批量发生在计量落地前，**未计量**，不事后补数；单次实测只作量级参考。
 
 ## 本节点的决定账本（每条带理由与重开条件；只写"决定了什么、为什么、代价"，规则本体在别的层）
 
@@ -376,6 +386,8 @@ M5′ 并行可选，不阻塞 M4a 与 M4b
 - **人的那门未判**：抽样表的触发是真实 pi 会话用户消息（`source=session`）代替实时窗口标题，
   属 dry-run；50 行全在 2026-10-27 12:50–13:36Z 这一段。用户填完 `正确/错误` 后，以
   `--labels` 重跑 eval 才得到题面正确率；在此之前不写“M0″ 通过”。
+- 计量：已落地的调用都进 `metrics`（purpose=`grounding:comment`）与 `trajectory/`；那 50 次批量调用
+  在计量落地前，**未计量**。单次同类调用实测 6,870 in / 294 out / 4.6 s（2026-10-27），仅作量级参考。
 - 采集仍停（最后一条观察 2026-10-22 本地）；实时标题触发（窗口切换 → 新 small → 取材料）已接进守护进程，
   但尚无用真实屏幕跑出的读数。
 
