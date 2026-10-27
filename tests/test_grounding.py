@@ -329,6 +329,37 @@ def main() -> None:
         check("长" * 300 not in long_text and "长" * 121 not in long_text,
               "默认表把标题截断到约 120 字符")
 
+        # —— 9b. 人工抽样表 → labels → 题面正确率 ——
+        sheet2 = tmp / "sheet2.md"
+        sheet2.write_text(
+            "| moment id | 标题/触发 | 题面 | 材料（locator） | 评论 | 正确/错误 |\n"
+            "|---|---|---|---|---|---|\n"
+            "| m-a | alpha | 题面 A | x | y | 正确 |\n"
+            "| m-b | beta | 题面 B | x | y | 错误 |\n"
+            "| m-c | gamma | 题面 C | x | y |  |\n",
+            encoding="utf-8")
+        labels_json = tmp / "labels.json"
+        r = subprocess.run([sys.executable, str(ROOT / "scripts/m0pp_labels.py"),
+                            "--sheet", str(sheet2), "--out", str(labels_json)],
+                           capture_output=True, text=True)
+        check(r.returncode == 0 and labels_json.is_file(), f"labels 应生成: {r.stderr}")
+        labels = json.loads(labels_json.read_text(encoding="utf-8"))
+        check(labels == {"m-a": "correct", "m-b": "wrong"},
+              f"只收 正确/错误，空行跳过: {labels}")
+        dec_a = dict(speak_decision, moment_id="m-a")
+        dec_b = dict(speak_decision, moment_id="m-b")
+        dec_c = dict(speak_decision, moment_id="m-c")
+        two = tmp / "two.jsonl"
+        two.write_text("\n".join(json.dumps(d, ensure_ascii=False)
+                                 for d in (dec_a, dec_b, dec_c)) + "\n",
+                        encoding="utf-8")
+        r = subprocess.run([sys.executable, str(ROOT / "scripts/m0pp_eval.py"),
+                            "--decisions", str(two), "--labels", str(labels_json)],
+                           capture_output=True, text=True)
+        check(r.returncode == 0 and "题面正确率=50.0%" in r.stdout,
+              f"人标 1 对 1 错应算出 50%: {r.stdout}")
+        check("人标 2 条" in r.stdout, "只把有标签的行计入分母")
+
         # —— 10. demo --no-model 确定性（只取材料，不调模型）——
         demo_data = tmp / "demo-data"
         r = subprocess.run([sys.executable, str(ROOT / "scripts/m0pp_demo.py"),

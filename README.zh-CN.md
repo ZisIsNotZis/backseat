@@ -40,6 +40,7 @@ M0″ 可以脱离实时屏幕单独跑（材料用本机仓库与 pi 会话记�
 python3 scripts/m0pp_demo.py --title 'zsh · ~/vibe/backseat' --data-dir ~/backseat-data
 python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding
 python3 scripts/m0pp_sample.py --decisions ~/backseat-data/grounding --out ~/backseat-data/grounding/sample.md
+python3 scripts/m0pp_labels.py --sheet ~/backseat-data/grounding/sample.md --out ~/backseat-data/grounding/labels.json
 ```
 
 ## 现在能做什么

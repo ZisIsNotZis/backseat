@@ -275,6 +275,9 @@ python3 scripts/m0pp_sample.py --decisions ~/backseat-data/grounding \
     --out ~/backseat-data/grounding/sample.md          # 默认可读版（只有 locator）
 python3 scripts/m0pp_sample.py --decisions ~/backseat-data/grounding \
     --out /tmp/sample-full.md --full                    # 详细版（带材料正文）
+# 填完最后一列（正确/错误）后转成 labels，再让判官算题面正确率
+python3 scripts/m0pp_labels.py --sheet ~/backseat-data/grounding/sample.md \
+    --out ~/backseat-data/grounding/labels.json
 python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding \
     --labels ~/backseat-data/grounding/labels.json
 ```

@@ -40,6 +40,7 @@ M0″ is runnable on its own, without a live screen (it uses the local repos and
 python3 scripts/m0pp_demo.py --title 'zsh · ~/vibe/backseat' --data-dir ~/backseat-data
 python3 scripts/m0pp_eval.py --decisions ~/backseat-data/grounding
 python3 scripts/m0pp_sample.py --decisions ~/backseat-data/grounding --out ~/backseat-data/grounding/sample.md
+python3 scripts/m0pp_labels.py --sheet ~/backseat-data/grounding/sample.md --out ~/backseat-data/grounding/labels.json
 ```
 
 ## What it can do now
